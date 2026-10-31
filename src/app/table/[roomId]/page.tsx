@@ -176,7 +176,7 @@ export default function TablePage() {
         id: topId,
         defaultName: topId.startsWith("bot-") ? BOT_META[topId]?.name ?? "Bot Vượng" : "Player",
         seed: topId.startsWith("bot-") ? BOT_META[topId]?.seed ?? "Vuong" : topId,
-        pos: "top-4 left-1/2 -translate-x-1/2",
+        pos: "top-20 left-1/2 -translate-x-1/2", // Pushed down to avoid banner overlap
         orient: "horizontal" as const,
       },
       {
@@ -245,7 +245,21 @@ export default function TablePage() {
 
       {!isMagnifying &&
         opponentsAroundTable.map((seat) => {
-          if (seat.id.startsWith("empty-")) return null;
+          if (seat.id.startsWith("empty-")) {
+            return (
+              <div
+                key={seat.id}
+                className={`absolute ${seat.pos} w-28 h-32 border-2 border-dashed border-slate-700/50 bg-slate-900/30 rounded-2xl flex flex-col items-center justify-center`}
+              >
+                <div className="w-10 h-10 rounded-full bg-slate-800/50 mb-2 flex items-center justify-center">
+                  <span className="text-xl animate-pulse">⏳</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-bold uppercase text-center tracking-wider">
+                  Waiting<br />for Player
+                </span>
+              </div>
+            );
+          }
 
           const base = rosterMap[seat.id] || {
             id: seat.id,

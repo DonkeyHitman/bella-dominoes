@@ -38,38 +38,46 @@ export class RoomManager {
       socket.data.playerId = playerId;
       socket.join(roomId);
 
-      for (const bot of [BOT_EAST_TIEN, BOT_NORTH_VUONG, BOT_WEST_TUAN]) {
-        await prisma.player.upsert({
-          where: { id: bot.id },
-          update: { avatarUrl: bot.avatarUrl },
-          create: { id: bot.id, name: bot.name, avatarUrl: bot.avatarUrl, credits: 0, gamesPlayed: 0, gamesWon: 0 },
-        }).catch(() => {});
-      }
-
-      const expectedSeats = [playerId, BOT_EAST_TIEN.id, BOT_NORTH_VUONG.id, BOT_WEST_TUAN.id];
-
+      const isMainClub = roomId === "main-club";
       let room = this.rooms.get(roomId);
-      const needsReset = !room || room.seats.length !== 4 || room.seats.some((s, i) => s !== expectedSeats[i]);
 
-      if (!room || needsReset) {
-        room = {
-          roomId,
-          seats: expectedSeats,
-          roundNumber: 0,
-          previousWinnerId: null,
-          hands: {},
-          board: createInitialBoardState(),
-          activeTurnPlayerId: null,
-          mustPlaySixSix: false,
-          consecutivePasses: 0,
-          lastPlacerId: null,
-          precedingSnapshot: null,
-          latestSnapshot: null,
-        };
-        this.rooms.set(roomId, room);
-        this.startNewRound(room);
+      if (isMainClub) {
+        // Main Club: Always fill with bots and auto-start
+        for (const bot of [BOT_EAST_TIEN, BOT_NORTH_VUONG, BOT_WEST_TUAN]) {
+          await prisma.player.upsert({
+            where: { id: bot.id },
+            update: { avatarUrl: bot.avatarUrl },
+            create: { id: bot.id, name: bot.name, avatarUrl: bot.avatarUrl, credits: 0, gamesPlayed: 0, gamesWon: 0 },
+          }).catch(() => {});
+        }
+
+        const expectedSeats = [playerId, BOT_EAST_TIEN.id, BOT_NORTH_VUONG.id, BOT_WEST_TUAN.id];
+        const needsReset = !room || room.seats.length !== 4 || room.seats.some((s, i) => s !== expectedSeats[i]);
+
+        if (!room || needsReset) {
+          room = this.createEmptyRoomState(roomId, expectedSeats);
+          this.rooms.set(roomId, room);
+          this.startNewRound(room);
+        } else {
+          this.broadcastRoomState(room);
+        }
       } else {
-        this.broadcastRoomState(room);
+        // Custom Table: Add players dynamically, wait for 4 players to start
+        if (!room) {
+          room = this.createEmptyRoomState(roomId, [playerId]);
+          this.rooms.set(roomId, room);
+          this.broadcastRoomState(room);
+        } else {
+          if (!room.seats.includes(playerId) && room.seats.length < 4) {
+            room.seats.push(playerId);
+            
+            if (room.seats.length === 4) {
+              this.startNewRound(room);
+              return; // startNewRound handles the broadcast
+            }
+          }
+          this.broadcastRoomState(room);
+        }
       }
     });
 
@@ -87,7 +95,9 @@ export class RoomManager {
 
     socket.on("room:nextRound", ({ roomId }) => {
       const room = this.rooms.get(roomId);
-      if (room && room.activeTurnPlayerId === null) this.startNewRound(room);
+      if (room && room.activeTurnPlayerId === null && room.seats.length === 4) {
+        this.startNewRound(room);
+      }
     });
 
     socket.on("chat:emoji", ({ roomId, playerId, emoji }) => {
@@ -99,13 +109,29 @@ export class RoomManager {
     });
   }
 
+  private createEmptyRoomState(roomId: string, seats: string[]): RoomSession {
+    return {
+      roomId,
+      seats,
+      roundNumber: 0,
+      previousWinnerId: null,
+      hands: {},
+      board: createInitialBoardState(),
+      activeTurnPlayerId: null,
+      mustPlaySixSix: false,
+      consecutivePasses: 0,
+      lastPlacerId: null,
+      precedingSnapshot: null,
+      latestSnapshot: null,
+    };
+  }
+
   private getNextPlayerId(room: RoomSession, currentId: string): string {
     const seatIdx = room.seats.indexOf(currentId);
     if (seatIdx === -1) return room.seats[0];
     return room.seats[(seatIdx + 1) % 4];
   }
 
-  // Helper to check if ALL players currently have 0 legal moves remaining (Deadlocked / Blocked Board)
   private isTableDeadlocked(room: RoomSession): boolean {
     const boardEnds = room.board.leftEnd && room.board.rightEnd
       ? { left: room.board.leftEnd.openPip, right: room.board.rightEnd.openPip }
@@ -116,12 +142,10 @@ export class RoomManager {
       const hand = room.hands[pid] || [];
       if (hand.length > 0) {
         const { moves } = getPlayableMovesForHand(hand, boardEnds, false);
-        if (moves.length > 0) {
-          return false; // At least one player still has a legal move
-        }
+        if (moves.length > 0) return false;
       }
     }
-    return true; // Zero players have any legal moves left
+    return true;
   }
 
   private async executeMove(room: RoomSession, playerId: string, tileId: string, targetEnd: "root" | "left" | "right") {
@@ -153,14 +177,12 @@ export class RoomManager {
     room.board = placeTileOnBoard(room.board, chosen.tile, chosen.targetEnd);
     room.hands[playerId] = hand.filter((t) => t.id !== tileId);
 
-    // Normal win condition: player played their last tile
     if (room.hands[playerId].length === 0) {
       const payout = calculateNormalFinishPayout(room.hands);
       await this.commitRoundSettlement(room, payout);
       return;
     }
 
-    // Check if this move deadlocked the entire table
     const boardEndsCurrent = room.board.leftEnd && room.board.rightEnd
       ? { left: room.board.leftEnd.openPip, right: room.board.rightEnd.openPip }
       : null;
@@ -190,7 +212,6 @@ export class RoomManager {
       ? { left: room.board.leftEnd.openPip, right: room.board.rightEnd.openPip }
       : null;
 
-    // Trigger blocked game if 4 consecutive passes OR if the entire table is deadlocked
     if ((room.consecutivePasses >= 4 || (boardEnds && this.isTableDeadlocked(room))) && room.lastPlacerId && boardEnds) {
       const blockerId = room.lastPlacerId;
       const snapshotP = room.precedingSnapshot ?? room.latestSnapshot!;
