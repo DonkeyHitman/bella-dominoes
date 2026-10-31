@@ -14,7 +14,7 @@ const BOT_WEST_TUAN = { id: "bot-1", name: "Bot Tuấn", avatarUrl: "https://api
 
 interface RoomSession {
   roomId: string;
-  ownerId: string | null; // Tracks who created the table
+  ownerId: string | null;
   seats: string[];
   roundNumber: number;
   previousWinnerId: string | null;
@@ -63,7 +63,6 @@ export class RoomManager {
         }
       } else {
         if (!room) {
-          // Creator becomes the owner
           room = this.createEmptyRoomState(roomId, [playerId], playerId);
           this.rooms.set(roomId, room);
           this.broadcastRoomState(room);
@@ -80,7 +79,22 @@ export class RoomManager {
       }
     });
 
-    // Room Destruction Event (Only owner can destroy)
+    // Handle abrupt disconnections (closing browser, refreshing, or leaving table)
+    socket.on("disconnect", () => {
+      const playerId = socket.data.playerId;
+      if (!playerId) return;
+
+      for (const [roomId, room] of this.rooms.entries()) {
+        if (roomId === "main-club") continue; // Do not alter bot rooms
+
+        // If the table hasn't fully started yet (still waiting for 4 players)
+        if (room.activeTurnPlayerId === null && room.seats.includes(playerId)) {
+          room.seats = room.seats.filter((id) => id !== playerId);
+          this.broadcastRoomState(room);
+        }
+      }
+    });
+
     socket.on("room:destroy", ({ roomId, playerId }) => {
       const room = this.rooms.get(roomId);
       if (room && room.ownerId === playerId) {
