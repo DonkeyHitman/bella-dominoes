@@ -199,21 +199,21 @@ export default function TablePage() {
         id: rightId,
         defaultName: rightId.startsWith("bot-") ? BOT_META[rightId]?.name ?? "Bot Tiến" : "Player",
         seed: rightId.startsWith("bot-") ? BOT_META[rightId]?.seed ?? "Tien" : rightId,
-        pos: "right-56 top-1/2 -translate-y-1/2", 
+        pos: "right-12 top-1/2 -translate-y-1/2", 
         orient: "vertical" as const,
       },
       {
         id: topId,
         defaultName: topId.startsWith("bot-") ? BOT_META[topId]?.name ?? "Bot Vượng" : "Player",
         seed: topId.startsWith("bot-") ? BOT_META[topId]?.seed ?? "Vuong" : topId,
-        pos: "top-6 left-1/2 -translate-x-1/2",
+        pos: "top-8 left-1/2 -translate-x-1/2",
         orient: "horizontal" as const,
       },
       {
         id: leftId,
         defaultName: leftId.startsWith("bot-") ? BOT_META[leftId]?.name ?? "Bot Tuấn" : "Player",
         seed: leftId.startsWith("bot-") ? BOT_META[leftId]?.seed ?? "Tuan" : leftId,
-        pos: "left-8 top-1/2 -translate-y-1/2",
+        pos: "left-12 top-1/2 -translate-y-1/2",
         orient: "vertical" as const,
       },
     ];
@@ -245,10 +245,130 @@ export default function TablePage() {
   const hasNoMoves = evaluation.playableTileIds.size === 0;
 
   return (
-    <div className="relative w-screen h-screen bg-slate-950 overflow-hidden flex items-center justify-center select-none">
+    <div className="w-screen h-screen bg-slate-950 overflow-hidden flex select-none">
       
-      {/* Consolidated Right Sidebar: Table Controls + Chat */}
-      <div className="fixed top-0 right-0 h-full w-48 bg-slate-900/95 border-l border-slate-800/80 backdrop-blur-md flex flex-col shadow-2xl z-50 shrink-0">
+      {/* Main Playable Area (Automatically centered inside remaining width) */}
+      <div className="relative flex-1 h-full flex items-center justify-center">
+        
+        {/* Opponent Pods */}
+        {opponentsAroundTable.map((seat) => {
+          if (seat.id.startsWith("empty-")) {
+            return (
+              <div
+                key={seat.id}
+                className={`absolute ${seat.pos} w-28 h-32 border-2 border-dashed border-slate-700/50 bg-slate-900/30 rounded-2xl flex flex-col items-center justify-center`}
+              >
+                <div className="w-10 h-10 rounded-full bg-slate-800/50 mb-2 flex items-center justify-center">
+                  <span className="text-xl animate-pulse">⏳</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-bold uppercase text-center tracking-wider">
+                  Waiting<br />for Player
+                </span>
+              </div>
+            );
+          }
+
+          const base = rosterMap[seat.id] || {
+            id: seat.id,
+            name: seat.defaultName,
+            avatarUrl: `https://api.dicebear.com/9.x/adventurer/svg?seed=${seat.seed}`,
+            credits: 0,
+            gamesPlayed: 0,
+            gamesWon: 0,
+            remainingTiles: 7,
+            isTurn: false,
+          };
+          const liveTileCount =
+            typeof opponentCounts[seat.id] === "number" ? opponentCounts[seat.id] : 7;
+
+          return (
+            <PlayerPod
+              key={seat.id}
+              positionClass={seat.pos}
+              orientation={seat.orient}
+              player={{
+                ...base,
+                remainingTiles: liveTileCount,
+                isTurn: activeTurnPlayerId === seat.id,
+              }}
+              isRoundOver={Boolean(settlement)}
+            />
+          );
+        })}
+
+        {/* My Pod */}
+        {myPlayerId && (
+          <PlayerPod
+            positionClass="bottom-32 left-1/2 -translate-x-1/2"
+            orientation="horizontal"
+            isMe={true}
+            onAvatarUpdate={handleAvatarUpdate}
+            player={{
+              id: myPlayerId,
+              name: myName,
+              avatarUrl: myAvatarUrl,
+              credits: myBase?.credits ?? 0,
+              gamesPlayed: myBase?.gamesPlayed ?? 0,
+              gamesWon: myBase?.gamesWon ?? 0,
+              remainingTiles: myHand.length,
+              isTurn: isMyTurn,
+            }}
+            isRoundOver={Boolean(settlement)}
+          />
+        )}
+
+        {/* Game Board */}
+        <GameBoardCanvas
+          board={board}
+          playerCount={seats.length}
+          isMagnifying={false}
+          pendingAmbiguousTile={pendingTile}
+          onResolveAmbiguousEnd={handleResolve}
+        />
+
+        {isMyTurn && (
+          <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 animate-bounce">
+            <div className="px-4 py-1.5 bg-emerald-500 text-slate-950 font-black text-xs uppercase rounded-full shadow-lg tracking-wider">
+              {hasNoMoves ? "No Valid Moves Available!" : "Your Turn — Double-click tile to play"}
+            </div>
+            {hasNoMoves && (
+              <button
+                onClick={handlePass}
+                className="flex items-center gap-1.5 px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs uppercase rounded-full shadow-2xl transition animate-pulse cursor-pointer border-2 border-white"
+              >
+                <FastForward className="w-4 h-4" />
+                <span>Pass Turn</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {myPlayerId && (
+          <PlayerHand
+            hand={myHand}
+            playableTileIds={evaluation.playableTileIds}
+            ambiguousTileIds={evaluation.ambiguousTileIds}
+            isMyTurn={isMyTurn}
+            playerName={myName}
+            credits={myBase?.credits ?? 0}
+            onQuickPlayTile={handlePlay}
+            onPassTurn={handlePass}
+            hasPlayableMoves={!hasNoMoves}
+          />
+        )}
+
+        <SettlementModal
+          payout={settlement}
+          playerNames={playerNames}
+          onNextRound={() => {
+            setSettlement(null);
+            socketRef.current?.emit("room:nextRound", { roomId });
+          }}
+        />
+      </div>
+
+      {/* Right Sidebar: Table Controls + Chat (Fixed inline) */}
+      <div className="w-48 h-full bg-slate-900/95 border-l border-slate-800/80 backdrop-blur-md flex flex-col shadow-2xl z-50 shrink-0 relative">
         
         {/* Top Section: Table Controls */}
         <div className="p-4 border-b border-slate-800 bg-slate-900/50">
@@ -335,122 +455,6 @@ export default function TablePage() {
           </form>
         </div>
       </div>
-
-      {/* Opponent Pods */}
-      {opponentsAroundTable.map((seat) => {
-        if (seat.id.startsWith("empty-")) {
-          return (
-            <div
-              key={seat.id}
-              className={`absolute ${seat.pos} w-28 h-32 border-2 border-dashed border-slate-700/50 bg-slate-900/30 rounded-2xl flex flex-col items-center justify-center`}
-            >
-              <div className="w-10 h-10 rounded-full bg-slate-800/50 mb-2 flex items-center justify-center">
-                <span className="text-xl animate-pulse">⏳</span>
-              </div>
-              <span className="text-[10px] text-slate-500 font-bold uppercase text-center tracking-wider">
-                Waiting<br />for Player
-              </span>
-            </div>
-          );
-        }
-
-        const base = rosterMap[seat.id] || {
-          id: seat.id,
-          name: seat.defaultName,
-          avatarUrl: `https://api.dicebear.com/9.x/adventurer/svg?seed=${seat.seed}`,
-          credits: 0,
-          gamesPlayed: 0,
-          gamesWon: 0,
-          remainingTiles: 7,
-          isTurn: false,
-        };
-        const liveTileCount =
-          typeof opponentCounts[seat.id] === "number" ? opponentCounts[seat.id] : 7;
-
-        return (
-          <PlayerPod
-            key={seat.id}
-            positionClass={seat.pos}
-            orientation={seat.orient}
-            player={{
-              ...base,
-              remainingTiles: liveTileCount,
-              isTurn: activeTurnPlayerId === seat.id,
-            }}
-            isRoundOver={Boolean(settlement)}
-          />
-        );
-      })}
-
-      {/* My Pod */}
-      {myPlayerId && (
-        <PlayerPod
-          positionClass="bottom-32 left-1/2 -translate-x-1/2"
-          orientation="horizontal"
-          isMe={true}
-          onAvatarUpdate={handleAvatarUpdate}
-          player={{
-            id: myPlayerId,
-            name: myName,
-            avatarUrl: myAvatarUrl,
-            credits: myBase?.credits ?? 0,
-            gamesPlayed: myBase?.gamesPlayed ?? 0,
-            gamesWon: myBase?.gamesWon ?? 0,
-            remainingTiles: myHand.length,
-            isTurn: isMyTurn,
-          }}
-          isRoundOver={Boolean(settlement)}
-        />
-      )}
-
-      {/* Game Board */}
-      <GameBoardCanvas
-        board={board}
-        playerCount={seats.length}
-        isMagnifying={false}
-        pendingAmbiguousTile={pendingTile}
-        onResolveAmbiguousEnd={handleResolve}
-      />
-
-      {isMyTurn && (
-        <div className="fixed bottom-36 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 animate-bounce">
-          <div className="px-4 py-1.5 bg-emerald-500 text-slate-950 font-black text-xs uppercase rounded-full shadow-lg tracking-wider">
-            {hasNoMoves ? "No Valid Moves Available!" : "Your Turn — Double-click tile to play"}
-          </div>
-          {hasNoMoves && (
-            <button
-              onClick={handlePass}
-              className="flex items-center gap-1.5 px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs uppercase rounded-full shadow-2xl transition animate-pulse cursor-pointer border-2 border-white"
-            >
-              <FastForward className="w-4 h-4" />
-              <span>Pass Turn</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {myPlayerId && (
-        <PlayerHand
-          hand={myHand}
-          playableTileIds={evaluation.playableTileIds}
-          ambiguousTileIds={evaluation.ambiguousTileIds}
-          isMyTurn={isMyTurn}
-          playerName={myName}
-          credits={myBase?.credits ?? 0}
-          onQuickPlayTile={handlePlay}
-          onPassTurn={handlePass}
-          hasPlayableMoves={!hasNoMoves}
-        />
-      )}
-
-      <SettlementModal
-        payout={settlement}
-        playerNames={playerNames}
-        onNextRound={() => {
-          setSettlement(null);
-          socketRef.current?.emit("room:nextRound", { roomId });
-        }}
-      />
     </div>
   );
 }
