@@ -206,7 +206,7 @@ export default function TablePage() {
     return [
       { 
         id: rightId, 
-        pos: "right-8 top-1/2 -translate-y-1/2", 
+        pos: "right-20 top-1/2 -translate-y-1/2", 
         orient: "vertical" as const,
         defaultName: rightId.startsWith("bot-") ? BOT_META[rightId]?.name ?? "Bot Tiến" : "Player", 
         seed: rightId.startsWith("bot-") ? BOT_META[rightId]?.seed ?? "Tien" : "Player" 
