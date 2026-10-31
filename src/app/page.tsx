@@ -48,9 +48,12 @@ export default function LobbyPage() {
   };
 
   const handleCreateTable = async () => {
-    const randomCode = "table-" + Math.random().toString(36).substring(2, 7);
-    setTableId(randomCode);
-    
+    const customTable = tableId.trim()
+      ? tableId.trim().toLowerCase().replace(/\s+/g, "-")
+      : "table-" + Math.random().toString(36).substring(2, 7);
+
+    setTableId(customTable);
+
     const userEmail = email.trim() || "caonhavu@gmail.com";
     const name = displayName.trim() || "John";
 
@@ -62,7 +65,7 @@ export default function LobbyPage() {
     const player = await res.json();
 
     localStorage.setItem("bella_dominoes_player_id", player.id);
-    router.push(`/table/${randomCode}`);
+    router.push(`/table/${customTable}`);
   };
 
   const handleJoinTable = async (e: React.FormEvent) => {
