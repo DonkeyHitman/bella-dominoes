@@ -10,7 +10,7 @@ import { PlayerPod, PlayerProfileSummary } from "../../../components/PlayerPod";
 import { PlayerHand } from "../../../components/PlayerHand";
 import { ControlTray } from "../../../components/ControlTray";
 import { SettlementModal } from "../../../components/SettlementModal";
-import { FastForward, LogOut } from "lucide-react";
+import { FastForward, LogOut, Copy, Check } from "lucide-react";
 
 const BOT_META: Record<string, { name: string; seed: string }> = {
   "bot-3": { name: "Bot Tiến", seed: "Tien" },
@@ -37,6 +37,7 @@ export default function TablePage() {
   const [pendingTile, setPendingTile] = useState<DominoTileType | null>(null);
   const [settlement, setSettlement] = useState<PayoutResult | null>(null);
   const [chatLog, setChatLog] = useState<Array<{ sender: string; text: string }>>([]);
+  const [copied, setCopied] = useState(false);
 
   const fetchRoster = () => {
     fetch("/api/players")
@@ -106,6 +107,13 @@ export default function TablePage() {
     router.push("/");
   };
 
+  const handleCopyInvite = () => {
+    const inviteUrl = window.location.href;
+    navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
   const boardEnds = useMemo(() => {
     if (!board.leftEnd || !board.rightEnd) return null;
     return { left: board.leftEnd.openPip, right: board.rightEnd.openPip };
@@ -150,36 +158,37 @@ export default function TablePage() {
 
   const opponentsAroundTable = useMemo(() => {
     const myIdx = myPlayerId && seats.includes(myPlayerId) ? seats.indexOf(myPlayerId) : 0;
-    const rightId = seats.length === 4 ? seats[(myIdx + 1) % 4] : "bot-3";
-    const topId = seats.length === 4 ? seats[(myIdx + 2) % 4] : "bot-2";
-    const leftId = seats.length === 4 ? seats[(myIdx + 3) % 4] : "bot-1";
+    const useBots = roomId === "main-club";
+
+    const rightId = seats[(myIdx + 1) % 4] || (useBots ? "bot-3" : "empty-1");
+    const topId = seats[(myIdx + 2) % 4] || (useBots ? "bot-2" : "empty-2");
+    const leftId = seats[(myIdx + 3) % 4] || (useBots ? "bot-1" : "empty-3");
 
     return [
       {
         id: rightId,
-        defaultName: BOT_META[rightId]?.name ?? "Bot Tiến",
-        seed: BOT_META[rightId]?.seed ?? "Tien",
+        defaultName: rightId.startsWith("bot-") ? BOT_META[rightId]?.name ?? "Bot Tiến" : "Player",
+        seed: rightId.startsWith("bot-") ? BOT_META[rightId]?.seed ?? "Tien" : rightId,
         pos: "right-[calc(50%-730px)] top-1/2 -translate-y-1/2",
         orient: "vertical" as const,
       },
       {
         id: topId,
-        defaultName: BOT_META[topId]?.name ?? "Bot Vượng",
-        seed: BOT_META[topId]?.seed ?? "Vuong",
+        defaultName: topId.startsWith("bot-") ? BOT_META[topId]?.name ?? "Bot Vượng" : "Player",
+        seed: topId.startsWith("bot-") ? BOT_META[topId]?.seed ?? "Vuong" : topId,
         pos: "top-4 left-1/2 -translate-x-1/2",
         orient: "horizontal" as const,
       },
       {
         id: leftId,
-        defaultName: BOT_META[leftId]?.name ?? "Bot Tuấn",
-        seed: BOT_META[leftId]?.seed ?? "Tuan",
+        defaultName: leftId.startsWith("bot-") ? BOT_META[leftId]?.name ?? "Bot Tuấn" : "Player",
+        seed: leftId.startsWith("bot-") ? BOT_META[leftId]?.seed ?? "Tuan" : leftId,
         pos: "left-[calc(50%-730px)] top-1/2 -translate-y-1/2",
         orient: "vertical" as const,
       },
     ];
-  }, [seats, myPlayerId]);
+  }, [seats, myPlayerId, roomId]);
 
-  // Comprehensive player names lookup mapping all IDs (human UUIDs + bots) to their display names
   const playerNames = useMemo(() => {
     const m: Record<string, string> = {
       "bot-3": "Bot Tiến",
@@ -206,20 +215,38 @@ export default function TablePage() {
 
   return (
     <div className="relative w-screen h-screen bg-slate-950 overflow-hidden flex items-center justify-center select-none">
-      {/* Leave Table Button in Top-Left Corner */}
-      <div className="fixed top-6 left-8 z-50">
+      
+      {/* Top Banner: Leave Table & Invite Link */}
+      <div className="fixed top-0 left-0 w-full z-50 flex items-center justify-between bg-slate-900/90 border-b border-slate-800/80 backdrop-blur-md px-6 py-3 shadow-lg">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleLeaveTable}
+            className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg transition-colors cursor-pointer"
+            title="Leave Table"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="text-xs font-bold">Leave Table</span>
+          </button>
+          <div className="h-6 w-px bg-slate-700"></div>
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">Active Table</span>
+            <span className="text-sm font-black text-amber-400">{roomId}</span>
+          </div>
+        </div>
+
         <button
-          onClick={handleLeaveTable}
-          className="flex items-center gap-2 px-4 py-2.5 bg-slate-900/95 hover:bg-slate-800 text-rose-400 border border-rose-500/40 rounded-2xl shadow-2xl backdrop-blur-md transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
-          title="Leave Table & Return to Lobby"
+          onClick={handleCopyInvite}
+          className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-400 rounded-xl transition cursor-pointer"
         >
-          <LogOut className="w-4 h-4" />
-          <span className="text-xs font-black tracking-wide text-white">Leave Table</span>
+          {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+          <span className={copied ? "text-emerald-400" : ""}>{copied ? "Invite Link Copied!" : "Copy Invite Link"}</span>
         </button>
       </div>
 
       {!isMagnifying &&
         opponentsAroundTable.map((seat) => {
+          if (seat.id.startsWith("empty-")) return null;
+
           const base = rosterMap[seat.id] || {
             id: seat.id,
             name: seat.defaultName,
@@ -276,7 +303,6 @@ export default function TablePage() {
         onResolveAmbiguousEnd={handleResolve}
       />
 
-      {/* Turn Banner & Direct Pass Button Overlay */}
       {isMyTurn && (
         <div className="fixed bottom-36 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 animate-bounce">
           <div className="px-4 py-1.5 bg-emerald-500 text-slate-950 font-black text-xs uppercase rounded-full shadow-lg tracking-wider">

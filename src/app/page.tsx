@@ -2,13 +2,13 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trophy, UserCheck, LogIn, PlusCircle } from "lucide-react";
-import { RankingsModal } from "../components/RankingsModal";
+import { RankingsModal } from "../../components/RankingsModal"; // Adjust relative path if needed based on your folder structure
 
 export default function LobbyPage() {
   const router = useRouter();
   const [email, setEmail] = useState("caonhavu@gmail.com");
   const [displayName, setDisplayName] = useState("John");
-  const [tableId, setTableId] = useState("main-club");
+  const [tableId, setTableId] = useState("");
   const [isRankingsOpen, setIsRankingsOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -138,7 +138,7 @@ export default function LobbyPage() {
               type="text"
               value={tableId}
               onChange={(e) => setTableId(e.target.value)}
-              placeholder="e.g. main-club, friday-poker-crew"
+              placeholder="e.g. friday-night, johns-table (leave blank for random)"
               className="w-full p-3 bg-slate-800/90 border border-slate-700 focus:border-amber-400 rounded-xl text-white text-sm outline-none transition font-semibold"
             />
             <p className="text-[10px] text-slate-500 mt-1">
