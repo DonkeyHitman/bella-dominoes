@@ -198,34 +198,36 @@ export default function TablePage() {
     const myIdx = myPlayerId && seats.includes(myPlayerId) ? seats.indexOf(myPlayerId) : 0;
     const useBots = roomId === "main-club";
 
+    // Ensure bot fallbacks are correctly assigned when seats array is sparse or missing entries
     const rightId = seats[(myIdx + 1) % 4] || (useBots ? "bot-3" : "empty-1");
     const topId = seats[(myIdx + 2) % 4] || (useBots ? "bot-2" : "empty-2");
     const leftId = seats[(myIdx + 3) % 4] || (useBots ? "bot-1" : "empty-3");
 
     return [
-    { 
-      id: rightId, 
-      pos: "right-6 top-1/2 -translate-y-1/2", 
-      orient: "vertical" as const,
-      defaultName: rightId.startsWith("bot-") ? BOT_META[rightId]?.name ?? "Bot Tiến" : "Player", 
-      seed: rightId.startsWith("bot-") ? BOT_META[rightId]?.seed ?? "Tien" : "Player" 
-    },
-    { 
-      id: topId, 
-      pos: "top-6 left-1/2 -translate-x-1/2", 
-      orient: "horizontal" as const,
-      defaultName: topId.startsWith("bot-") ? BOT_META[topId]?.name ?? "Bot Vượng" : "Player", 
-      seed: topId.startsWith("bot-") ? BOT_META[topId]?.seed ?? "Vuong" : "Player" 
-    },
-    { 
-      id: leftId, 
-      pos: "left-6 top-1/2 -translate-y-1/2", 
-      orient: "vertical" as const,
-      defaultName: leftId.startsWith("bot-") ? BOT_META[leftId]?.name ?? "Bot Tuấn" : "Player", 
-      seed: leftId.startsWith("bot-") ? BOT_META[leftId]?.seed ?? "Tuan" : "Player" 
-    }
-  ];
+      { 
+        id: rightId, 
+        pos: "right-8 top-1/2 -translate-y-1/2", 
+        orient: "vertical" as const,
+        defaultName: rightId.startsWith("bot-") ? BOT_META[rightId]?.name ?? "Bot Tiến" : "Player", 
+        seed: rightId.startsWith("bot-") ? BOT_META[rightId]?.seed ?? "Tien" : "Player" 
+      },
+      { 
+        id: topId, 
+        pos: "top-8 left-1/2 -translate-x-1/2", 
+        orient: "horizontal" as const,
+        defaultName: topId.startsWith("bot-") ? BOT_META[topId]?.name ?? "Bot Vượng" : "Player", 
+        seed: topId.startsWith("bot-") ? BOT_META[topId]?.seed ?? "Vuong" : "Player" 
+      },
+      { 
+        id: leftId, 
+        pos: "left-8 top-1/2 -translate-y-1/2", 
+        orient: "vertical" as const,
+        defaultName: leftId.startsWith("bot-") ? BOT_META[leftId]?.name ?? "Bot Tuấn" : "Player", 
+        seed: leftId.startsWith("bot-") ? BOT_META[leftId]?.seed ?? "Tuan" : "Player" 
+      }
+    ];
   }, [seats, myPlayerId, roomId]);
+
 const myBase = myPlayerId ? rosterMap[myPlayerId] : null;
   const myName = myBase?.name ?? "John";
   const myAvatarUrl = customAvatar || myBase?.avatarUrl || `https://api.dicebear.com/9.x/adventurer/svg?seed=${myPlayerId || "John"}`;
