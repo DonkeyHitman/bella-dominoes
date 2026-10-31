@@ -194,12 +194,13 @@ export default function TablePage() {
     const topId = seats[(myIdx + 2) % 4] || (useBots ? "bot-2" : "empty-2");
     const leftId = seats[(myIdx + 3) % 4] || (useBots ? "bot-1" : "empty-3");
 
+    // Symmetrical positioning around the relative flex container
     return [
       {
         id: rightId,
         defaultName: rightId.startsWith("bot-") ? BOT_META[rightId]?.name ?? "Bot Tiến" : "Player",
         seed: rightId.startsWith("bot-") ? BOT_META[rightId]?.seed ?? "Tien" : rightId,
-        pos: "right-12 top-1/2 -translate-y-1/2", 
+        pos: "right-8 top-1/2 -translate-y-1/2", 
         orient: "vertical" as const,
       },
       {
@@ -213,7 +214,7 @@ export default function TablePage() {
         id: leftId,
         defaultName: leftId.startsWith("bot-") ? BOT_META[leftId]?.name ?? "Bot Tuấn" : "Player",
         seed: leftId.startsWith("bot-") ? BOT_META[leftId]?.seed ?? "Tuan" : leftId,
-        pos: "left-12 top-1/2 -translate-y-1/2",
+        pos: "left-8 top-1/2 -translate-y-1/2",
         orient: "vertical" as const,
       },
     ];
@@ -245,18 +246,29 @@ export default function TablePage() {
   const hasNoMoves = evaluation.playableTileIds.size === 0;
 
   return (
-    <div className="w-screen h-screen bg-slate-950 overflow-hidden flex select-none">
+    <div className="relative w-screen h-screen bg-slate-950 overflow-hidden flex select-none">
       
-      {/* Main Playable Area (Automatically centered inside remaining width) */}
-      <div className="relative flex-1 h-full flex items-center justify-center">
+      {/* Main Playable Area */}
+      <div className="relative flex-1 h-full">
         
+        {/* Game Board: Shielded in absolute layer to guarantee geometric center */}
+        <div className="absolute inset-0 flex items-center justify-center z-0">
+          <GameBoardCanvas
+            board={board}
+            playerCount={seats.length}
+            isMagnifying={false}
+            pendingAmbiguousTile={pendingTile}
+            onResolveAmbiguousEnd={handleResolve}
+          />
+        </div>
+
         {/* Opponent Pods */}
         {opponentsAroundTable.map((seat) => {
           if (seat.id.startsWith("empty-")) {
             return (
               <div
                 key={seat.id}
-                className={`absolute ${seat.pos} w-28 h-32 border-2 border-dashed border-slate-700/50 bg-slate-900/30 rounded-2xl flex flex-col items-center justify-center`}
+                className={`absolute ${seat.pos} w-28 h-32 border-2 border-dashed border-slate-700/50 bg-slate-900/30 rounded-2xl flex flex-col items-center justify-center z-10`}
               >
                 <div className="w-10 h-10 rounded-full bg-slate-800/50 mb-2 flex items-center justify-center">
                   <span className="text-xl animate-pulse">⏳</span>
@@ -284,7 +296,7 @@ export default function TablePage() {
           return (
             <PlayerPod
               key={seat.id}
-              positionClass={seat.pos}
+              positionClass={`${seat.pos} z-10`}
               orientation={seat.orient}
               player={{
                 ...base,
@@ -299,7 +311,7 @@ export default function TablePage() {
         {/* My Pod */}
         {myPlayerId && (
           <PlayerPod
-            positionClass="bottom-32 left-1/2 -translate-x-1/2"
+            positionClass="bottom-32 left-1/2 -translate-x-1/2 z-10"
             orientation="horizontal"
             isMe={true}
             onAvatarUpdate={handleAvatarUpdate}
@@ -317,15 +329,7 @@ export default function TablePage() {
           />
         )}
 
-        {/* Game Board */}
-        <GameBoardCanvas
-          board={board}
-          playerCount={seats.length}
-          isMagnifying={false}
-          pendingAmbiguousTile={pendingTile}
-          onResolveAmbiguousEnd={handleResolve}
-        />
-
+        {/* Turn Action Banner */}
         {isMyTurn && (
           <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 animate-bounce">
             <div className="px-4 py-1.5 bg-emerald-500 text-slate-950 font-black text-xs uppercase rounded-full shadow-lg tracking-wider">
@@ -343,18 +347,21 @@ export default function TablePage() {
           </div>
         )}
 
+        {/* Player Hand */}
         {myPlayerId && (
-          <PlayerHand
-            hand={myHand}
-            playableTileIds={evaluation.playableTileIds}
-            ambiguousTileIds={evaluation.ambiguousTileIds}
-            isMyTurn={isMyTurn}
-            playerName={myName}
-            credits={myBase?.credits ?? 0}
-            onQuickPlayTile={handlePlay}
-            onPassTurn={handlePass}
-            hasPlayableMoves={!hasNoMoves}
-          />
+          <div className="absolute bottom-0 w-full z-40">
+            <PlayerHand
+              hand={myHand}
+              playableTileIds={evaluation.playableTileIds}
+              ambiguousTileIds={evaluation.ambiguousTileIds}
+              isMyTurn={isMyTurn}
+              playerName={myName}
+              credits={myBase?.credits ?? 0}
+              onQuickPlayTile={handlePlay}
+              onPassTurn={handlePass}
+              hasPlayableMoves={!hasNoMoves}
+            />
+          </div>
         )}
 
         <SettlementModal
@@ -367,10 +374,9 @@ export default function TablePage() {
         />
       </div>
 
-      {/* Right Sidebar: Table Controls + Chat (Fixed inline) */}
-      <div className="w-48 h-full bg-slate-900/95 border-l border-slate-800/80 backdrop-blur-md flex flex-col shadow-2xl z-50 shrink-0 relative">
+      {/* Right Sidebar: Table Controls + Chat */}
+      <div className="w-48 h-full bg-slate-900/95 border-l border-slate-800/80 backdrop-blur-md flex flex-col shadow-2xl z-50 shrink-0">
         
-        {/* Top Section: Table Controls */}
         <div className="p-4 border-b border-slate-800 bg-slate-900/50">
           <div className="mb-4 text-center">
             <span className="text-[9px] text-slate-400 uppercase tracking-widest block font-bold mb-0.5">Active Table</span>
@@ -396,13 +402,11 @@ export default function TablePage() {
           </div>
         </div>
 
-        {/* Middle Section: Chat Header */}
         <div className="px-4 py-2 border-b border-slate-800 bg-slate-900 flex items-center gap-1.5">
           <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
           <span className="font-black text-amber-400 text-xs tracking-wide">Table Chat</span>
         </div>
         
-        {/* Chat Messages */}
         <div className="flex-1 p-3 overflow-y-auto flex flex-col gap-3 scrollbar-thin scrollbar-thumb-slate-700">
           {chatLog.length === 0 && (
             <div className="text-center text-[10px] text-slate-500 italic mt-6">No messages yet. Say hello!</div>
@@ -425,14 +429,13 @@ export default function TablePage() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* Bottom Section: Chat Input & Emojis */}
         <div className="p-3 border-t border-slate-800 bg-slate-900">
           <div className="flex justify-between gap-1 mb-2">
             {QUICK_EMOJIS.map(emoji => (
               <button 
                 key={emoji} 
                 onClick={() => setChatInput(prev => prev + emoji)}
-                className="p-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md transition text-xs flex-1 flex items-center justify-center hover:scale-105 active:scale-95"
+                className="p-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md transition text-xs flex-1 flex items-center justify-center hover:scale-105 active:scale-95 cursor-pointer"
               >
                 {emoji}
               </button>
