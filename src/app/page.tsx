@@ -1,4 +1,4 @@
-﻿"app/client";
+﻿"use client";
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Globe, Plus, Users, Play, Trash2, ShieldCheck, Sparkles } from "lucide-react";
