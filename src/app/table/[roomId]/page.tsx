@@ -224,7 +224,7 @@ const myBase = myPlayerId ? rosterMap[myPlayerId] : null;
   const hasNoMoves = evaluation.playableTileIds.size === 0;
 
   return (
-    <div className="relative w-screen h-screen bg-slate-950 overflow-hidden flex select-none">
+    <div className="relative w-screen h-screen bg-slate-950 overflow-auto flex select-none">
       
       {/* Main Playable Area */}
       <div className="relative flex-1 h-full">
