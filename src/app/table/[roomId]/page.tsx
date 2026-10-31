@@ -176,7 +176,7 @@ export default function TablePage() {
         id: topId,
         defaultName: topId.startsWith("bot-") ? BOT_META[topId]?.name ?? "Bot Vượng" : "Player",
         seed: topId.startsWith("bot-") ? BOT_META[topId]?.seed ?? "Vuong" : topId,
-        pos: "top-20 left-1/2 -translate-x-1/2", // Pushed down to avoid banner overlap
+        pos: "top-6 left-1/2 -translate-x-1/2", // Reverted to top-6 since banner is gone
         orient: "horizontal" as const,
       },
       {
@@ -216,30 +216,30 @@ export default function TablePage() {
   return (
     <div className="relative w-screen h-screen bg-slate-950 overflow-hidden flex items-center justify-center select-none">
       
-      {/* Top Banner: Leave Table & Invite Link */}
-      <div className="fixed top-0 left-0 w-full z-50 flex items-center justify-between bg-slate-900/90 border-b border-slate-800/80 backdrop-blur-md px-6 py-3 shadow-lg">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleLeaveTable}
-            className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg transition-colors cursor-pointer"
-            title="Leave Table"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="text-xs font-bold">Leave Table</span>
-          </button>
-          <div className="h-6 w-px bg-slate-700"></div>
-          <div>
-            <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">Active Table</span>
-            <span className="text-sm font-black text-amber-400">{roomId}</span>
+      {/* Fixed Left Sidebar Menu */}
+      <div className="fixed top-0 left-0 h-full w-48 bg-slate-900/90 border-r border-slate-800/80 backdrop-blur-md p-5 flex flex-col justify-between shadow-2xl z-50">
+        <div>
+          <div className="mb-8">
+            <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-bold mb-1">Active Table</span>
+            <span className="text-lg font-black text-amber-400 break-words leading-tight">{roomId}</span>
           </div>
+          
+          <button
+            onClick={handleCopyInvite}
+            className="w-full flex items-center justify-center gap-2 px-3 py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-400 rounded-xl transition cursor-pointer mb-3"
+          >
+            {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+            <span className={copied ? "text-emerald-400" : ""}>{copied ? "Copied!" : "Copy Link"}</span>
+          </button>
         </div>
 
         <button
-          onClick={handleCopyInvite}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-400 rounded-xl transition cursor-pointer"
+          onClick={handleLeaveTable}
+          className="w-full flex items-center justify-center gap-2 px-3 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl transition-colors cursor-pointer"
+          title="Leave Table"
         >
-          {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-          <span className={copied ? "text-emerald-400" : ""}>{copied ? "Invite Link Copied!" : "Copy Invite Link"}</span>
+          <LogOut className="w-4 h-4" />
+          <span className="text-xs font-bold">Leave Table</span>
         </button>
       </div>
 
