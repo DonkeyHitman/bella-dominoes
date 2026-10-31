@@ -8,15 +8,16 @@ import { getPlayableMovesForHand } from "../../../engine/deck";
 import { GameBoardCanvas } from "../../../components/GameBoardCanvas";
 import { PlayerPod, PlayerProfileSummary } from "../../../components/PlayerPod";
 import { PlayerHand } from "../../../components/PlayerHand";
-import { ControlTray } from "../../../components/ControlTray";
 import { SettlementModal } from "../../../components/SettlementModal";
-import { FastForward, LogOut, Copy, Check } from "lucide-react";
+import { FastForward, LogOut, Copy, Check, MessageSquare } from "lucide-react";
 
 const BOT_META: Record<string, { name: string; seed: string }> = {
   "bot-3": { name: "Bot Tiến", seed: "Tien" },
   "bot-2": { name: "Bot Vượng", seed: "Vuong" },
   "bot-1": { name: "Bot Tuấn", seed: "Tuan" },
 };
+
+const QUICK_EMOJIS = ["👍", "😂", "🔥", "😡", "🎲", "👏"];
 
 export default function TablePage() {
   const params = useParams();
@@ -33,11 +34,14 @@ export default function TablePage() {
   const [opponentCounts, setOpponentCounts] = useState<Record<string, number>>({});
   const [activeTurnPlayerId, setActiveTurnPlayerId] = useState<string | null>(null);
   const [mustPlaySixSix, setMustPlaySixSix] = useState(false);
-  const [isMagnifying, setIsMagnifying] = useState(false);
   const [pendingTile, setPendingTile] = useState<DominoTileType | null>(null);
   const [settlement, setSettlement] = useState<PayoutResult | null>(null);
-  const [chatLog, setChatLog] = useState<Array<{ sender: string; text: string }>>([]);
   const [copied, setCopied] = useState(false);
+  
+  // Chat States
+  const [chatLog, setChatLog] = useState<Array<{ sender: string; text: string }>>([]);
+  const [chatInput, setChatInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const fetchRoster = () => {
     fetch("/api/players")
@@ -56,10 +60,13 @@ export default function TablePage() {
 
   useEffect(() => {
     const savedId = localStorage.getItem("bella_dominoes_player_id");
+    
+    // If unregistered player clicks the invite link, redirect them to the lobby with the room ID attached
     if (!savedId) {
-      router.push("/");
+      router.push(`/?invite=${roomId}`);
       return;
     }
+    
     setMyPlayerId(savedId);
 
     const savedAvatar = localStorage.getItem(`bella_avatar_${savedId}`);
@@ -93,6 +100,13 @@ export default function TablePage() {
     };
   }, [roomId, router]);
 
+  // Auto-scroll chat when new messages arrive
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatLog]);
+
   const handleAvatarUpdate = (newUrl: string) => {
     setCustomAvatar(newUrl);
     if (myPlayerId) {
@@ -112,6 +126,19 @@ export default function TablePage() {
     navigator.clipboard.writeText(inviteUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleSendChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !socketRef.current || !myPlayerId) return;
+    
+    socketRef.current.emit("chat:message", {
+      roomId,
+      sender: rosterMap[myPlayerId]?.name || "Player",
+      text: chatInput.trim(),
+    });
+    
+    setChatInput("");
   };
 
   const boardEnds = useMemo(() => {
@@ -169,21 +196,21 @@ export default function TablePage() {
         id: rightId,
         defaultName: rightId.startsWith("bot-") ? BOT_META[rightId]?.name ?? "Bot Tiến" : "Player",
         seed: rightId.startsWith("bot-") ? BOT_META[rightId]?.seed ?? "Tien" : rightId,
-        pos: "right-[calc(50%-730px)] top-1/2 -translate-y-1/2",
+        pos: "right-80 top-1/2 -translate-y-1/2", // Adjusted to clear right chat sidebar
         orient: "vertical" as const,
       },
       {
         id: topId,
         defaultName: topId.startsWith("bot-") ? BOT_META[topId]?.name ?? "Bot Vượng" : "Player",
         seed: topId.startsWith("bot-") ? BOT_META[topId]?.seed ?? "Vuong" : topId,
-        pos: "top-6 left-1/2 -translate-x-1/2", // Reverted to top-6 since banner is gone
+        pos: "top-6 left-1/2 -translate-x-1/2",
         orient: "horizontal" as const,
       },
       {
         id: leftId,
         defaultName: leftId.startsWith("bot-") ? BOT_META[leftId]?.name ?? "Bot Tuấn" : "Player",
         seed: leftId.startsWith("bot-") ? BOT_META[leftId]?.seed ?? "Tuan" : leftId,
-        pos: "left-[calc(50%-730px)] top-1/2 -translate-y-1/2",
+        pos: "left-56 top-1/2 -translate-y-1/2", // Adjusted to clear left menu sidebar
         orient: "vertical" as const,
       },
     ];
@@ -205,6 +232,7 @@ export default function TablePage() {
   }, [rosterMap, myPlayerId]);
 
   const myBase = myPlayerId ? rosterMap[myPlayerId] : null;
+  const myName = myBase?.name ?? "John";
   const myAvatarUrl =
     customAvatar ||
     myBase?.avatarUrl ||
@@ -243,53 +271,115 @@ export default function TablePage() {
         </button>
       </div>
 
-      {!isMagnifying &&
-        opponentsAroundTable.map((seat) => {
-          if (seat.id.startsWith("empty-")) {
+      {/* Fixed Right Chat Sidebar */}
+      <div className="fixed top-0 right-0 h-full w-72 bg-slate-900/95 border-l border-slate-800/80 backdrop-blur-md flex flex-col shadow-2xl z-50">
+        <div className="px-5 py-4 border-b border-slate-800 bg-slate-900 flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-amber-400" />
+          <span className="font-black text-amber-400 text-sm tracking-wide">Table Chat</span>
+        </div>
+        
+        {/* Chat Messages */}
+        <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 scrollbar-thin scrollbar-thumb-slate-700">
+          {chatLog.length === 0 && (
+            <div className="text-center text-xs text-slate-500 italic mt-10">No messages yet. Say hello!</div>
+          )}
+          {chatLog.map((msg, i) => {
+            const isMe = msg.sender === myName;
             return (
-              <div
-                key={seat.id}
-                className={`absolute ${seat.pos} w-28 h-32 border-2 border-dashed border-slate-700/50 bg-slate-900/30 rounded-2xl flex flex-col items-center justify-center`}
-              >
-                <div className="w-10 h-10 rounded-full bg-slate-800/50 mb-2 flex items-center justify-center">
-                  <span className="text-xl animate-pulse">⏳</span>
+              <div key={i} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                <span className="text-[10px] text-slate-500 font-bold mb-1 ml-1">{msg.sender}</span>
+                <div className={`px-3 py-2 rounded-xl text-xs font-semibold max-w-[90%] break-words shadow-md ${
+                  isMe 
+                    ? "bg-amber-500 text-slate-950 rounded-br-sm" 
+                    : "bg-slate-800 border border-slate-700 text-slate-200 rounded-bl-sm"
+                }`}>
+                  {msg.text}
                 </div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase text-center tracking-wider">
-                  Waiting<br />for Player
-                </span>
               </div>
             );
-          }
+          })}
+          <div ref={chatEndRef} />
+        </div>
 
-          const base = rosterMap[seat.id] || {
-            id: seat.id,
-            name: seat.defaultName,
-            avatarUrl: `https://api.dicebear.com/9.x/adventurer/svg?seed=${seat.seed}`,
-            credits: 0,
-            gamesPlayed: 0,
-            gamesWon: 0,
-            remainingTiles: 7,
-            isTurn: false,
-          };
-          const liveTileCount =
-            typeof opponentCounts[seat.id] === "number" ? opponentCounts[seat.id] : 7;
-
-          return (
-            <PlayerPod
-              key={seat.id}
-              positionClass={seat.pos}
-              orientation={seat.orient}
-              player={{
-                ...base,
-                remainingTiles: liveTileCount,
-                isTurn: activeTurnPlayerId === seat.id,
-              }}
-              isRoundOver={Boolean(settlement)}
+        {/* Chat Input & Emojis */}
+        <div className="p-4 border-t border-slate-800 bg-slate-900">
+          <div className="flex justify-between gap-1 mb-3">
+            {QUICK_EMOJIS.map(emoji => (
+              <button 
+                key={emoji} 
+                onClick={() => setChatInput(prev => prev + emoji)}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition text-sm flex-1 flex items-center justify-center hover:scale-105 active:scale-95"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+          <form onSubmit={handleSendChat} className="flex gap-2">
+            <input 
+              type="text"
+              value={chatInput} 
+              onChange={e => setChatInput(e.target.value)} 
+              placeholder="Type a message..." 
+              className="flex-1 bg-slate-950 border border-slate-700 text-white text-xs px-3 py-2.5 rounded-xl outline-none focus:border-amber-500 transition shadow-inner" 
             />
-          );
-        })}
+            <button 
+              type="submit" 
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs transition shadow-lg hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
 
-      {!isMagnifying && myPlayerId && (
+      {/* Opponent Pods */}
+      {opponentsAroundTable.map((seat) => {
+        if (seat.id.startsWith("empty-")) {
+          return (
+            <div
+              key={seat.id}
+              className={`absolute ${seat.pos} w-28 h-32 border-2 border-dashed border-slate-700/50 bg-slate-900/30 rounded-2xl flex flex-col items-center justify-center`}
+            >
+              <div className="w-10 h-10 rounded-full bg-slate-800/50 mb-2 flex items-center justify-center">
+                <span className="text-xl animate-pulse">⏳</span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-bold uppercase text-center tracking-wider">
+                Waiting<br />for Player
+              </span>
+            </div>
+          );
+        }
+
+        const base = rosterMap[seat.id] || {
+          id: seat.id,
+          name: seat.defaultName,
+          avatarUrl: `https://api.dicebear.com/9.x/adventurer/svg?seed=${seat.seed}`,
+          credits: 0,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          remainingTiles: 7,
+          isTurn: false,
+        };
+        const liveTileCount =
+          typeof opponentCounts[seat.id] === "number" ? opponentCounts[seat.id] : 7;
+
+        return (
+          <PlayerPod
+            key={seat.id}
+            positionClass={seat.pos}
+            orientation={seat.orient}
+            player={{
+              ...base,
+              remainingTiles: liveTileCount,
+              isTurn: activeTurnPlayerId === seat.id,
+            }}
+            isRoundOver={Boolean(settlement)}
+          />
+        );
+      })}
+
+      {/* My Pod */}
+      {myPlayerId && (
         <PlayerPod
           positionClass="bottom-32 left-1/2 -translate-x-1/2"
           orientation="horizontal"
@@ -297,7 +387,7 @@ export default function TablePage() {
           onAvatarUpdate={handleAvatarUpdate}
           player={{
             id: myPlayerId,
-            name: myBase?.name ?? "John",
+            name: myName,
             avatarUrl: myAvatarUrl,
             credits: myBase?.credits ?? 0,
             gamesPlayed: myBase?.gamesPlayed ?? 0,
@@ -309,10 +399,11 @@ export default function TablePage() {
         />
       )}
 
+      {/* Game Board */}
       <GameBoardCanvas
         board={board}
         playerCount={seats.length}
-        isMagnifying={isMagnifying}
+        isMagnifying={false}
         pendingAmbiguousTile={pendingTile}
         onResolveAmbiguousEnd={handleResolve}
       />
@@ -334,34 +425,19 @@ export default function TablePage() {
         </div>
       )}
 
-      {!isMagnifying && myPlayerId && (
+      {myPlayerId && (
         <PlayerHand
           hand={myHand}
           playableTileIds={evaluation.playableTileIds}
           ambiguousTileIds={evaluation.ambiguousTileIds}
           isMyTurn={isMyTurn}
-          playerName={myBase?.name ?? "John"}
+          playerName={myName}
           credits={myBase?.credits ?? 0}
           onQuickPlayTile={handlePlay}
           onPassTurn={handlePass}
           hasPlayableMoves={!hasNoMoves}
         />
       )}
-
-      <ControlTray
-        onMagnifyChange={setIsMagnifying}
-        onSendEmoji={(emoji) =>
-          socketRef.current?.emit("chat:emoji", { roomId, playerId: myPlayerId, emoji })
-        }
-        onSendChat={(msg) =>
-          socketRef.current?.emit("chat:message", {
-            roomId,
-            sender: rosterMap[myPlayerId || ""]?.name || "Player",
-            text: msg,
-          })
-        }
-        chatLog={chatLog}
-      />
 
       <SettlementModal
         payout={settlement}

@@ -13,6 +13,14 @@ export default function LobbyPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    // 1. Check if the player arrived via an invite link
+    const params = new URLSearchParams(window.location.search);
+    const inviteCode = params.get("invite");
+    if (inviteCode) {
+      setTableId(inviteCode);
+    }
+
+    // 2. Load existing profile if they are already registered
     const savedId = localStorage.getItem("bella_dominoes_player_id");
     if (savedId) {
       fetch("/api/players")
@@ -86,8 +94,15 @@ export default function LobbyPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6 select-none">
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative">
+    <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6 select-none relative">
+      {/* Visual Indicator if they arrived via invite */}
+      {tableId && (
+        <div className="absolute top-10 text-emerald-400 font-bold bg-emerald-500/10 px-6 py-2 rounded-full border border-emerald-500/20 animate-pulse">
+          You've been invited to table: {tableId}. Register or Join below!
+        </div>
+      )}
+
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative mt-8">
         <h1 className="text-3xl font-black text-amber-400 text-center tracking-wide">
           bella-dominoes
         </h1>
@@ -138,7 +153,7 @@ export default function LobbyPage() {
               type="text"
               value={tableId}
               onChange={(e) => setTableId(e.target.value)}
-              placeholder="e.g. friday-night, johns-table (leave blank for random)"
+              placeholder="e.g. friday-night (leave blank for random)"
               className="w-full p-3 bg-slate-800/90 border border-slate-700 focus:border-amber-400 rounded-xl text-white text-sm outline-none transition font-semibold"
             />
             <p className="text-[10px] text-slate-500 mt-1">
