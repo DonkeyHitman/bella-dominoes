@@ -206,18 +206,21 @@ export default function TablePage() {
     { 
       id: rightId, 
       pos: "right-6 top-1/2 -translate-y-1/2", 
+      orient: "right",
       defaultName: rightId.startsWith("bot-") ? BOT_META[rightId]?.name ?? "Bot Tiến" : "Player", 
       seed: rightId.startsWith("bot-") ? BOT_META[rightId]?.seed ?? "Tien" : "Player" 
     },
     { 
       id: topId, 
       pos: "top-6 left-1/2 -translate-x-1/2", 
+      orient: "top",
       defaultName: topId.startsWith("bot-") ? BOT_META[topId]?.name ?? "Bot Vượng" : "Player", 
       seed: topId.startsWith("bot-") ? BOT_META[topId]?.seed ?? "Vuong" : "Player" 
     },
     { 
       id: leftId, 
       pos: "left-6 top-1/2 -translate-y-1/2", 
+      orient: "left",
       defaultName: leftId.startsWith("bot-") ? BOT_META[leftId]?.name ?? "Bot Tuấn" : "Player", 
       seed: leftId.startsWith("bot-") ? BOT_META[leftId]?.seed ?? "Tuan" : "Player" 
     }
