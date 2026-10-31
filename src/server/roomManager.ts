@@ -283,7 +283,7 @@ export class RoomManager {
     const socketsInRoom = this.io.sockets.adapter.rooms.get(room.roomId);
     if (!socketsInRoom) return;
 
-    for (const socketId of socketsInRoom) {
+    for (const socketId of Array.from(socketsInRoom)) {
       const client = this.io.sockets.sockets.get(socketId);
       const viewerId = client?.data?.playerId;
       client?.emit("game:state", {
