@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trophy, UserCheck, LogIn, PlusCircle } from "lucide-react";
-import { RankingsModal } from "../../components/RankingsModal"; // Adjust relative path if needed based on your folder structure
+import { RankingsModal } from "../components/RankingsModal";
 
 export default function LobbyPage() {
   const router = useRouter();
