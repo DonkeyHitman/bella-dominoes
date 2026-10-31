@@ -203,10 +203,25 @@ export default function TablePage() {
     const leftId = seats[(myIdx + 3) % 4] || (useBots ? "bot-1" : "empty-3");
 
     return [
-      { id: rightId, defaultName: rightId.startsWith("bot-") ? BOT_META[rightId]?.name ?? "Bot Tiến" : "Player", seed: rightId.startsWith("bot-") ? BOT_META[rightId]?.seed ?? "Tien" : rightId, pos: "right-8 top-1/2 -translate-y-1/2", orient: "vertical" as const },
-      { id: topId, defaultName: topId.startsWith("bot-") ? BOT_META[topId]?.name ?? "Bot Vượng" : "Player", seed: topId.startsWith("bot-") ? BOT_META[topId]?.seed ?? "Vuong" : topId, pos: "top-8 left-1/2 -translate-x-1/2", orient: "horizontal" as const },
-      { id: leftId, defaultName: leftId.startsWith("bot-") ? BOT_META[leftId]?.name ?? "Bot Tuấn" : "Player", seed: leftId.startsWith("bot-") ? BOT_META[leftId]?.seed ?? "Tuan" : leftId, pos: "left-8 top-1/2 -translate-y-1/2", orient: "vertical" as const },
-    ];
+    { 
+      id: rightId, 
+      pos: "right-6 top-1/2 -translate-y-1/2", 
+      defaultName: rightId.startsWith("bot-") ? BOT_META[rightId]?.name ?? "Bot Tiến" : "Player", 
+      seed: rightId.startsWith("bot-") ? BOT_META[rightId]?.seed ?? "Tien" : "Player" 
+    },
+    { 
+      id: topId, 
+      pos: "top-6 left-1/2 -translate-x-1/2", 
+      defaultName: topId.startsWith("bot-") ? BOT_META[topId]?.name ?? "Bot Vượng" : "Player", 
+      seed: topId.startsWith("bot-") ? BOT_META[topId]?.seed ?? "Vuong" : "Player" 
+    },
+    { 
+      id: leftId, 
+      pos: "left-6 top-1/2 -translate-y-1/2", 
+      defaultName: leftId.startsWith("bot-") ? BOT_META[leftId]?.name ?? "Bot Tuấn" : "Player", 
+      seed: leftId.startsWith("bot-") ? BOT_META[leftId]?.seed ?? "Tuan" : "Player" 
+    }
+  ];
   }, [seats, myPlayerId, roomId]);
 const myBase = myPlayerId ? rosterMap[myPlayerId] : null;
   const myName = myBase?.name ?? "John";
