@@ -40,8 +40,7 @@ export default function LobbyPage() {
         .catch(() => {});
     }
   }, []);
-
-  const handleRegisterOnly = async (e: React.FormEvent) => {
+const handleRegisterOnly = async (e: React.FormEvent) => {
     e.preventDefault();
     const userEmail = email.trim() || "caonhavu@gmail.com";
     const name = displayName.trim() || "John";
@@ -51,13 +50,22 @@ export default function LobbyPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: userEmail, name }),
     });
-    const player = await res.json();
+    
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error);
+      if (data.playerId) {
+        localStorage.setItem("bella_dominoes_player_id", data.playerId);
+        setSuccessMessage("Logged in with existing profile!");
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
+      return;
+    }
 
-    localStorage.setItem("bella_dominoes_player_id", player.id);
+    localStorage.setItem("bella_dominoes_player_id", data.id);
     setSuccessMessage("Profile registered successfully!");
     setTimeout(() => setSuccessMessage(null), 3000);
   };
-
   const handleCreateTable = async () => {
     const customTable = tableId.trim()
       ? tableId.trim().toLowerCase().replace(/\s+/g, "-")
