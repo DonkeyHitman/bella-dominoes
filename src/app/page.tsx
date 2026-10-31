@@ -1,7 +1,7 @@
 ﻿"use client";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, UserCheck, LogIn } from "lucide-react";
+import { Trophy, UserCheck, LogIn, PlusCircle } from "lucide-react";
 import { RankingsModal } from "../components/RankingsModal";
 
 export default function LobbyPage() {
@@ -47,6 +47,24 @@ export default function LobbyPage() {
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
+  const handleCreateTable = async () => {
+    const randomCode = "table-" + Math.random().toString(36).substring(2, 7);
+    setTableId(randomCode);
+    
+    const userEmail = email.trim() || "caonhavu@gmail.com";
+    const name = displayName.trim() || "John";
+
+    const res = await fetch("/api/players", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: userEmail, name }),
+    });
+    const player = await res.json();
+
+    localStorage.setItem("bella_dominoes_player_id", player.id);
+    router.push(`/table/${randomCode}`);
+  };
+
   const handleJoinTable = async (e: React.FormEvent) => {
     e.preventDefault();
     const userEmail = email.trim() || "caonhavu@gmail.com";
@@ -80,7 +98,7 @@ export default function LobbyPage() {
           </div>
         )}
 
-        <form className="space-y-4">
+        <form onSubmit={handleJoinTable} className="space-y-4">
           <div>
             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
               User ID / Email Address
@@ -125,20 +143,28 @@ export default function LobbyPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-3 gap-2 pt-2">
             <button
               type="button"
               onClick={handleRegisterOnly}
-              className="py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-xs rounded-xl shadow transition cursor-pointer flex items-center justify-center gap-1.5"
+              className="py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-xs rounded-xl shadow transition cursor-pointer flex flex-col items-center justify-center gap-1"
             >
               <UserCheck className="w-4 h-4 text-cyan-400" />
-              <span>Register Profile</span>
+              <span>Register</span>
             </button>
 
             <button
               type="button"
-              onClick={handleJoinTable}
-              className="py-3 bg-amber-500 hover:bg-amber-400 active:scale-[0.99] text-slate-950 font-black text-xs rounded-xl shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5"
+              onClick={handleCreateTable}
+              className="py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold text-xs rounded-xl shadow transition cursor-pointer flex flex-col items-center justify-center gap-1"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Create Table</span>
+            </button>
+
+            <button
+              type="submit"
+              className="py-3 bg-amber-500 hover:bg-amber-400 active:scale-[0.99] text-slate-950 font-black text-xs rounded-xl shadow-lg transition cursor-pointer flex flex-col items-center justify-center gap-1"
             >
               <LogIn className="w-4 h-4" />
               <span>Join Table</span>
