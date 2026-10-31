@@ -1,0 +1,19 @@
+﻿datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Player {
+  id           String   @id @default(uuid())
+  email        String   @unique @default("user@example.com")
+  name         String
+  credits      Int      @default(0)
+  gamesPlayed  Int      @default(0)
+  gamesWon     Int      @default(0)
+  avatarUrl    String   @default("https://api.dicebear.com/9.x/adventurer/svg?seed=default")
+  createdAt    DateTime @default(now())
+}
