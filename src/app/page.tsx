@@ -1,46 +1,78 @@
-﻿"use client";
+﻿"app/client";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Trophy, UserCheck, LogIn, PlusCircle, Trash2, Play } from "lucide-react";
-import { io } from "socket.io-client";
-import { RankingsModal } from "../components/RankingsModal";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Globe, Plus, Users, Play, Trash2, ShieldCheck, Sparkles } from "lucide-react";
+
+const t = {
+  en: {
+    title: "B.E.L.L.A. Dominoes Club",
+    subtitle: "4-Player Block Dominoes Arena",
+    registerTitle: "Player Profile Registration",
+    nameLabel: "Display Name",
+    emailLabel: "Email Address",
+    registerBtn: "Register / Update Profile",
+    playMainClub: "Play Main Club (with Bots)",
+    createTable: "Create Custom Table",
+    tableNamePlaceholder: "Table Name (optional)",
+    myTables: "My Created Tables",
+    noTables: "No custom tables created yet.",
+    joinTable: "Join Table",
+    destroyTable: "Delete Room",
+    langToggle: "🇻🇳 Tiếng Việt",
+    successRegistered: "Profile registered successfully!",
+    successExisting: "Logged in with existing profile!",
+  },
+  vi: {
+    title: "Câu Lạc Bộ Domino B.E.L.L.A.",
+    subtitle: "Đấu Trường Domino 4 Người Chơi",
+    registerTitle: "Đăng Ký Hồ Sơ Người Chơi",
+    nameLabel: "Tên Hiển Thị",
+    emailLabel: "Địa Chỉ Email",
+    registerBtn: "Đăng Ký / Cập Nhật Hồ Sơ",
+    playMainClub: "Chơi Bàn Chính (với Bot)",
+    createTable: "Tạo Bàn Riêng",
+    tableNamePlaceholder: "Tên Bàn (tuỳ chọn)",
+    myTables: "Bàn Do Bạn Tạo",
+    noTables: "Chưa có bàn riêng nào được tạo.",
+    joinTable: "Vào Bàn",
+    destroyTable: "Xóa Bàn",
+    langToggle: "🇬🇧 English",
+    successRegistered: "Đăng ký hồ sơ thành công!",
+    successExisting: "Đã đăng nhập bằng hồ sơ hiện có!",
+  },
+};
 
 export default function LobbyPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("caonhavu@gmail.com");
+  const searchParams = useSearchParams();
+  const inviteRoomId = searchParams.get("invite");
+
+  const [lang, setLang] = useState<"en" | "vi">("en");
   const [displayName, setDisplayName] = useState("John");
-  const [tableId, setTableId] = useState("");
-  const [isRankingsOpen, setIsRankingsOpen] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [email, setEmail] = useState("caonhavu@gmail.com");
+  const [tableId, setTableId] = useState(inviteRoomId || "");
   const [myTables, setMyTables] = useState<string[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const strings = t[lang];
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const inviteCode = params.get("invite");
-    if (inviteCode) {
-      setTableId(inviteCode);
-    }
+    const savedLang = localStorage.getItem("bella_lang") as "en" | "vi";
+    if (savedLang) setLang(savedLang);
 
-    const savedTables = JSON.parse(localStorage.getItem("bella_my_tables") || "[]");
-    setMyTables(savedTables);
-
-    const savedId = localStorage.getItem("bella_dominoes_player_id");
-    if (savedId) {
-      fetch("/api/players")
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data)) {
-            const found = data.find((p) => p.id === savedId && !p.id.startsWith("bot-"));
-            if (found) {
-              setEmail(found.email || "caonhavu@gmail.com");
-              setDisplayName(found.name || "John");
-            }
-          }
-        })
-        .catch(() => {});
+    const savedTables = localStorage.getItem("bella_my_tables");
+    if (savedTables) {
+      try { setMyTables(JSON.parse(savedTables)); } catch {}
     }
   }, []);
-const handleRegisterOnly = async (e: React.FormEvent) => {
+
+  const toggleLanguage = () => {
+    const next = lang === "en" ? "vi" : "en";
+    setLang(next);
+    localStorage.setItem("bella_lang", next);
+  };
+
+  const handleRegisterOnly = async (e: React.FormEvent) => {
     e.preventDefault();
     const userEmail = email.trim() || "caonhavu@gmail.com";
     const name = displayName.trim() || "John";
@@ -56,189 +88,155 @@ const handleRegisterOnly = async (e: React.FormEvent) => {
       alert(data.error);
       if (data.playerId) {
         localStorage.setItem("bella_dominoes_player_id", data.playerId);
-        setSuccessMessage("Logged in with existing profile!");
+        setSuccessMessage(strings.successExisting);
         setTimeout(() => setSuccessMessage(null), 3000);
       }
       return;
     }
 
     localStorage.setItem("bella_dominoes_player_id", data.id);
-    setSuccessMessage("Profile registered successfully!");
+    setSuccessMessage(strings.successRegistered);
     setTimeout(() => setSuccessMessage(null), 3000);
   };
-  const handleCreateTable = async () => {
+
+  const handleCreateTable = () => {
     const customTable = tableId.trim()
       ? tableId.trim().toLowerCase().replace(/\s+/g, "-")
       : "table-" + Math.random().toString(36).substring(2, 7);
 
     setTableId(customTable);
-
-    // Save this table as owned by me
     const updatedTables = Array.from(new Set([...myTables, customTable]));
     setMyTables(updatedTables);
     localStorage.setItem("bella_my_tables", JSON.stringify(updatedTables));
-
-    const userEmail = email.trim() || "caonhavu@gmail.com";
-    const name = displayName.trim() || "John";
-
-    const res = await fetch("/api/players", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: userEmail, name }),
-    });
-    const player = await res.json();
-
-    localStorage.setItem("bella_dominoes_player_id", player.id);
+    
     router.push(`/table/${customTable}`);
   };
 
-  const handleJoinTable = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const userEmail = email.trim() || "caonhavu@gmail.com";
-    const name = displayName.trim() || "John";
-
-    const res = await fetch("/api/players", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: userEmail, name }),
-    });
-    const player = await res.json();
-
-    localStorage.setItem("bella_dominoes_player_id", player.id);
-    const targetTable = tableId.trim() ? tableId.trim().toLowerCase().replace(/\s+/g, "-") : "main-club";
-    router.push(`/table/${targetTable}`);
-  };
-
-  const handleDeleteTable = (targetTable: string) => {
-    const savedId = localStorage.getItem("bella_dominoes_player_id");
-    if (savedId) {
-      // Temporarily connect to tell the server to wipe out the room
-      const tempSocket = io();
-      tempSocket.emit("room:destroy", { roomId: targetTable, playerId: savedId });
-      setTimeout(() => tempSocket.disconnect(), 1500);
+  const handleDestroyTable = (targetRoomId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const socket = (window as any).bellaSocket;
+    if (socket) {
+      socket.emit("room:destroy", { roomId: targetRoomId, playerId: localStorage.getItem("bella_dominoes_player_id") });
     }
-
-    const updated = myTables.filter(t => t !== targetTable);
+    const updated = myTables.filter(t => t !== targetRoomId);
     setMyTables(updated);
     localStorage.setItem("bella_my_tables", JSON.stringify(updated));
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6 select-none relative">
-      {tableId && !myTables.includes(tableId) && (
-        <div className="absolute top-10 text-emerald-400 font-bold bg-emerald-500/10 px-6 py-2 rounded-full border border-emerald-500/20 animate-pulse">
-          You've been invited to table: {tableId}. Register or Join below!
-        </div>
-      )}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 select-none relative">
+      
+      {/* Language Toggle Header */}
+      <div className="absolute top-6 right-6">
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl border border-slate-800 shadow-lg transition cursor-pointer"
+        >
+          <Globe className="w-4 h-4" />
+          <span>{strings.langToggle}</span>
+        </button>
+      </div>
 
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative mt-8">
-        <h1 className="text-3xl font-black text-amber-400 text-center tracking-wide">
-          bella-dominoes
-        </h1>
-        <p className="text-xs text-slate-400 text-center mt-1 mb-6">
-          4-Player Live Block Dominoes Club
-        </p>
+      <div className="max-w-md w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-md">
+        
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-2xl mx-auto flex items-center justify-center mb-3">
+            <Sparkles className="w-6 h-6 text-amber-400" />
+          </div>
+          <h1 className="text-2xl font-black text-white tracking-tight">{strings.title}</h1>
+          <p className="text-xs text-slate-400 mt-1 font-medium">{strings.subtitle}</p>
+        </div>
 
         {successMessage && (
-          <div className="mb-4 p-3 bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs font-bold rounded-xl text-center animate-pulse">
+          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold text-center rounded-xl animate-fade-in">
             {successMessage}
           </div>
         )}
 
-        <form onSubmit={handleJoinTable} className="space-y-4">
+        {/* Registration Form */}
+        <form onSubmit={handleRegisterOnly} className="space-y-4 mb-6">
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-              User ID / Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. caonhavu@gmail.com"
-              required
-              className="w-full p-3 bg-slate-800/90 border border-slate-700 focus:border-amber-400 rounded-xl text-white text-sm outline-none transition font-semibold"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-              Gameplay Display Name
-            </label>
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">{strings.nameLabel}</label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="e.g. John"
+              className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-amber-500 transition shadow-inner"
               required
-              className="w-full p-3 bg-slate-800/90 border border-slate-700 focus:border-amber-400 rounded-xl text-white text-sm outline-none transition font-semibold"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-              Table Name / Code
-            </label>
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">{strings.emailLabel}</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-amber-500 transition shadow-inner"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs rounded-xl border border-slate-700 transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>{strings.registerBtn}</span>
+          </button>
+        </form>
+
+        <hr className="border-slate-800 my-6" />
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <button
+            onClick={() => router.push("/table/main-club")}
+            className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Play className="w-4 h-4 fill-slate-950" />
+            <span>{strings.playMainClub}</span>
+          </button>
+
+          <div className="flex gap-2 pt-2">
             <input
               type="text"
               value={tableId}
               onChange={(e) => setTableId(e.target.value)}
-              placeholder="e.g. friday-night (leave blank for random)"
-              className="w-full p-3 bg-slate-800/90 border border-slate-700 focus:border-amber-400 rounded-xl text-white text-sm outline-none transition font-semibold"
+              placeholder={strings.tableNamePlaceholder}
+              className="flex-1 bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-xl outline-none focus:border-amber-500 transition shadow-inner"
             />
-            <p className="text-[10px] text-slate-500 mt-1">
-              Max 4 active players per table. Additional players enter a waiting queue.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 pt-2">
             <button
-              type="button"
-              onClick={handleRegisterOnly}
-              className="py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-bold text-xs rounded-xl shadow transition cursor-pointer flex flex-col items-center justify-center gap-1"
-            >
-              <UserCheck className="w-4 h-4 text-cyan-400" />
-              <span>Register</span>
-            </button>
-
-            <button
-              type="button"
               onClick={handleCreateTable}
-              className="py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold text-xs rounded-xl shadow transition cursor-pointer flex flex-col items-center justify-center gap-1"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition shadow-md flex items-center gap-1.5 cursor-pointer shrink-0"
             >
-              <PlusCircle className="w-4 h-4" />
-              <span>Create Table</span>
-            </button>
-
-            <button
-              type="submit"
-              className="py-3 bg-amber-500 hover:bg-amber-400 active:scale-[0.99] text-slate-950 font-black text-xs rounded-xl shadow-lg transition cursor-pointer flex flex-col items-center justify-center gap-1"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Join Table</span>
+              <Plus className="w-4 h-4" />
+              <span>{strings.createTable}</span>
             </button>
           </div>
-        </form>
+        </div>
 
-        {/* Owned Tables List */}
+        {/* My Created Tables Section */}
         {myTables.length > 0 && (
-          <div className="mt-8 border-t border-slate-800 pt-5">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 text-center">My Active Tables</h3>
-            <div className="space-y-2 max-h-40 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700">
-              {myTables.map(tId => (
-                <div key={tId} className="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800 shadow-inner">
-                  <span className="text-sm font-bold text-amber-400 truncate w-32">{tId}</span>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => router.push(`/table/${tId}`)} 
-                      className="flex items-center gap-1 text-[10px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg transition-colors font-bold"
+          <div className="mt-8 pt-6 border-t border-slate-800">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{strings.myTables}</h3>
+            <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+              {myTables.map((tName) => (
+                <div
+                  key={tName}
+                  onClick={() => router.push(`/table/${tName}`)}
+                  className="flex items-center justify-between p-3 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl cursor-pointer transition group"
+                >
+                  <span className="text-xs font-bold text-amber-400 group-hover:text-amber-300">{tName}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 font-semibold">{strings.joinTable}</span>
+                    <button
+                      onClick={(e) => handleDestroyTable(tName, e)}
+                      title={strings.destroyTable}
+                      className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-lg transition"
                     >
-                      <Play className="w-3 h-3" /> Join
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteTable(tId)} 
-                      className="flex items-center gap-1 text-[10px] bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-lg transition-colors font-bold"
-                    >
-                      <Trash2 className="w-3 h-3" /> Delete
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
@@ -247,18 +245,7 @@ const handleRegisterOnly = async (e: React.FormEvent) => {
           </div>
         )}
 
-        <div className="mt-5 pt-4 border-t border-slate-800 text-center">
-          <button
-            onClick={() => setIsRankingsOpen(true)}
-            className="inline-flex items-center gap-2 text-xs font-bold text-amber-400 hover:text-amber-300 transition cursor-pointer"
-          >
-            <Trophy className="w-4 h-4" />
-            <span>View Player Rankings</span>
-          </button>
-        </div>
       </div>
-
-      <RankingsModal isOpen={isRankingsOpen} onClose={() => setIsRankingsOpen(false)} />
-    </main>
+    </div>
   );
 }
