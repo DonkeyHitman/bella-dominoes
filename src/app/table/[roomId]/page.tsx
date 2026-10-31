@@ -196,7 +196,7 @@ export default function TablePage() {
 
   const opponentsAroundTable = useMemo(() => {
     const myIdx = myPlayerId && seats.includes(myPlayerId) ? seats.indexOf(myPlayerId) : 0;
-    const useBots = roomId === "main-club";S
+    const useBots = roomId === "main-club";
 
     const rightId = seats[(myIdx + 1) % 4] || (useBots ? "bot-3" : "empty-1");
     const topId = seats[(myIdx + 2) % 4] || (useBots ? "bot-2" : "empty-2");
