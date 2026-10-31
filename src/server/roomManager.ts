@@ -79,20 +79,20 @@ export class RoomManager {
       }
     });
 
-    // Handle abrupt disconnections (closing browser, refreshing, or leaving table)
+    // Handle abrupt disconnections using .forEach to avoid iteration compilation flags
     socket.on("disconnect", () => {
       const playerId = socket.data.playerId;
       if (!playerId) return;
 
-      for (const [roomId, room] of this.rooms.entries()) {
-        if (roomId === "main-club") continue; // Do not alter bot rooms
+      this.rooms.forEach((room, roomId) => {
+        if (roomId === "main-club") return; // Do not alter bot rooms
 
         // If the table hasn't fully started yet (still waiting for 4 players)
         if (room.activeTurnPlayerId === null && room.seats.includes(playerId)) {
           room.seats = room.seats.filter((id) => id !== playerId);
           this.broadcastRoomState(room);
         }
-      }
+      });
     });
 
     socket.on("room:destroy", ({ roomId, playerId }) => {
