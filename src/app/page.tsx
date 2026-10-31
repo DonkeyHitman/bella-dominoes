@@ -1,5 +1,5 @@
 ﻿"use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Globe, Plus, Users, Play, Trash2, ShieldCheck, Sparkles } from "lucide-react";
 
@@ -42,7 +42,7 @@ const t = {
   },
 };
 
-export default function LobbyPage() {
+function LobbyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteRoomId = searchParams.get("invite");
@@ -247,5 +247,13 @@ export default function LobbyPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function LobbyPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-amber-400 font-bold text-xs">Loading Lobby...</div>}>
+      <LobbyContent />
+    </Suspense>
   );
 }
