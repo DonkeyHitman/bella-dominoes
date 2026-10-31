@@ -1,7 +1,8 @@
 ﻿"use client";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, UserCheck, LogIn, PlusCircle } from "lucide-react";
+import { Trophy, UserCheck, LogIn, PlusCircle, Trash2, Play } from "lucide-react";
+import { io } from "socket.io-client";
 import { RankingsModal } from "../components/RankingsModal";
 
 export default function LobbyPage() {
@@ -11,16 +12,18 @@ export default function LobbyPage() {
   const [tableId, setTableId] = useState("");
   const [isRankingsOpen, setIsRankingsOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [myTables, setMyTables] = useState<string[]>([]);
 
   useEffect(() => {
-    // 1. Check if the player arrived via an invite link
     const params = new URLSearchParams(window.location.search);
     const inviteCode = params.get("invite");
     if (inviteCode) {
       setTableId(inviteCode);
     }
 
-    // 2. Load existing profile if they are already registered
+    const savedTables = JSON.parse(localStorage.getItem("bella_my_tables") || "[]");
+    setMyTables(savedTables);
+
     const savedId = localStorage.getItem("bella_dominoes_player_id");
     if (savedId) {
       fetch("/api/players")
@@ -62,6 +65,11 @@ export default function LobbyPage() {
 
     setTableId(customTable);
 
+    // Save this table as owned by me
+    const updatedTables = Array.from(new Set([...myTables, customTable]));
+    setMyTables(updatedTables);
+    localStorage.setItem("bella_my_tables", JSON.stringify(updatedTables));
+
     const userEmail = email.trim() || "caonhavu@gmail.com";
     const name = displayName.trim() || "John";
 
@@ -93,10 +101,23 @@ export default function LobbyPage() {
     router.push(`/table/${targetTable}`);
   };
 
+  const handleDeleteTable = (targetTable: string) => {
+    const savedId = localStorage.getItem("bella_dominoes_player_id");
+    if (savedId) {
+      // Temporarily connect to tell the server to wipe out the room
+      const tempSocket = io();
+      tempSocket.emit("room:destroy", { roomId: targetTable, playerId: savedId });
+      setTimeout(() => tempSocket.disconnect(), 1500);
+    }
+
+    const updated = myTables.filter(t => t !== targetTable);
+    setMyTables(updated);
+    localStorage.setItem("bella_my_tables", JSON.stringify(updated));
+  };
+
   return (
     <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6 select-none relative">
-      {/* Visual Indicator if they arrived via invite */}
-      {tableId && (
+      {tableId && !myTables.includes(tableId) && (
         <div className="absolute top-10 text-emerald-400 font-bold bg-emerald-500/10 px-6 py-2 rounded-full border border-emerald-500/20 animate-pulse">
           You've been invited to table: {tableId}. Register or Join below!
         </div>
@@ -189,6 +210,34 @@ export default function LobbyPage() {
             </button>
           </div>
         </form>
+
+        {/* Owned Tables List */}
+        {myTables.length > 0 && (
+          <div className="mt-8 border-t border-slate-800 pt-5">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 text-center">My Active Tables</h3>
+            <div className="space-y-2 max-h-40 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700">
+              {myTables.map(tId => (
+                <div key={tId} className="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800 shadow-inner">
+                  <span className="text-sm font-bold text-amber-400 truncate w-32">{tId}</span>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => router.push(`/table/${tId}`)} 
+                      className="flex items-center gap-1 text-[10px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg transition-colors font-bold"
+                    >
+                      <Play className="w-3 h-3" /> Join
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteTable(tId)} 
+                      className="flex items-center gap-1 text-[10px] bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-lg transition-colors font-bold"
+                    >
+                      <Trash2 className="w-3 h-3" /> Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 pt-4 border-t border-slate-800 text-center">
           <button

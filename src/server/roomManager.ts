@@ -14,6 +14,7 @@ const BOT_WEST_TUAN = { id: "bot-1", name: "Bot Tuấn", avatarUrl: "https://api
 
 interface RoomSession {
   roomId: string;
+  ownerId: string | null; // Tracks who created the table
   seats: string[];
   roundNumber: number;
   previousWinnerId: string | null;
@@ -42,7 +43,6 @@ export class RoomManager {
       let room = this.rooms.get(roomId);
 
       if (isMainClub) {
-        // Main Club: Always fill with bots and auto-start
         for (const bot of [BOT_EAST_TIEN, BOT_NORTH_VUONG, BOT_WEST_TUAN]) {
           await prisma.player.upsert({
             where: { id: bot.id },
@@ -55,29 +55,38 @@ export class RoomManager {
         const needsReset = !room || room.seats.length !== 4 || room.seats.some((s, i) => s !== expectedSeats[i]);
 
         if (!room || needsReset) {
-          room = this.createEmptyRoomState(roomId, expectedSeats);
+          room = this.createEmptyRoomState(roomId, expectedSeats, null);
           this.rooms.set(roomId, room);
           this.startNewRound(room);
         } else {
           this.broadcastRoomState(room);
         }
       } else {
-        // Custom Table: Add players dynamically, wait for 4 players to start
         if (!room) {
-          room = this.createEmptyRoomState(roomId, [playerId]);
+          // Creator becomes the owner
+          room = this.createEmptyRoomState(roomId, [playerId], playerId);
           this.rooms.set(roomId, room);
           this.broadcastRoomState(room);
         } else {
           if (!room.seats.includes(playerId) && room.seats.length < 4) {
             room.seats.push(playerId);
-            
             if (room.seats.length === 4) {
               this.startNewRound(room);
-              return; // startNewRound handles the broadcast
+              return; 
             }
           }
           this.broadcastRoomState(room);
         }
+      }
+    });
+
+    // Room Destruction Event (Only owner can destroy)
+    socket.on("room:destroy", ({ roomId, playerId }) => {
+      const room = this.rooms.get(roomId);
+      if (room && room.ownerId === playerId) {
+        this.io.to(roomId).emit("room:destroyed", { message: "The table owner has permanently closed this room." });
+        this.rooms.delete(roomId);
+        this.io.in(roomId).socketsLeave(roomId);
       }
     });
 
@@ -109,9 +118,10 @@ export class RoomManager {
     });
   }
 
-  private createEmptyRoomState(roomId: string, seats: string[]): RoomSession {
+  private createEmptyRoomState(roomId: string, seats: string[], ownerId: string | null): RoomSession {
     return {
       roomId,
+      ownerId,
       seats,
       roundNumber: 0,
       previousWinnerId: null,
