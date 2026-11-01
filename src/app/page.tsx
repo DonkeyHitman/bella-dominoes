@@ -2,8 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Upload, User, CheckCircle2 } from "lucide-react";
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase"; // Assumes standard project firebase initialization
 
 export default function SingleTableLobby() {
   const router = useRouter();
@@ -13,7 +11,7 @@ export default function SingleTableLobby() {
   const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
 
-  // Firestore-backed seats state
+  // Seat status tracking for the 4 fixed players
   const [seats, setSeats] = useState([
     { id: "player-a", name: "PLAYER A", email: "", avatar: "" },
     { id: "player-b", name: "PLAYER B", email: "", avatar: "" },
@@ -21,7 +19,7 @@ export default function SingleTableLobby() {
     { id: "player-d", name: "PLAYER D", email: "", avatar: "" },
   ]);
 
-  // Load local session and subscribe to live Firestore lobby updates
+  // Load local session and poll backend API for live multi-device seat updates
   useEffect(() => {
     const savedEmail = localStorage.getItem("bella_email");
     const savedSeat = localStorage.getItem("bella_display_name");
@@ -34,21 +32,23 @@ export default function SingleTableLobby() {
       setIsRegistered(true);
     }
 
-    // Real-time listener for multi-device seat syncing
-    const lobbyRef = doc(db, "lobbies", "main-table");
-    const unsubscribe = onSnapshot(lobbyRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data && data.seats) {
-          setSeats(data.seats);
+    const fetchSeats = async () => {
+      try {
+        const res = await fetch("/api/seats");
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.seats) {
+            setSeats(data.seats);
+          }
         }
-      } else {
-        // Initialize lobby document if it doesn't exist yet
-        setDoc(lobbyRef, { seats }, { merge: true });
+      } catch {
+        // Fallback silently if offline or endpoint is adjusting
       }
-    });
+    };
 
-    return () => unsubscribe();
+    fetchSeats();
+    const interval = setInterval(fetchSeats, 2500); // Poll every 2.5 seconds for instant cross-phone sync
+    return () => clearInterval(interval);
   }, []);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,24 +75,15 @@ export default function SingleTableLobby() {
     localStorage.setItem("bella_dominoes_player_id", selectedSeat.toLowerCase().replace(/\s+/g, '-'));
     setIsRegistered(true);
 
-    // Update Firestore with the new seat claim
+    // Sync seat reservation with backend API
     try {
-      const lobbyRef = doc(db, "lobbies", "main-table");
-      const updatedSeats = seats.map((s) => {
-        // If this is the user's chosen seat, assign their email & avatar
-        if (s.name === selectedSeat) {
-          return { ...s, email: cleanEmail, avatar: avatarUrl };
-        }
-        // If this user previously held another seat, clear it
-        if (s.email === cleanEmail) {
-          return { ...s, email: "", avatar: "" };
-        }
-        return s;
+      await fetch("/api/seats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seatName: selectedSeat, email: cleanEmail, avatar: avatarUrl }),
       });
-
-      await setDoc(lobbyRef, { seats: updatedSeats }, { merge: true });
     } catch (error) {
-      console.error("Failed to sync seat reservation to Firestore:", error);
+      console.error("Failed to sync seat registration:", error);
     }
   };
 
@@ -103,22 +94,14 @@ export default function SingleTableLobby() {
     localStorage.setItem("bella_display_name", seatName);
     localStorage.setItem("bella_dominoes_player_id", seatName.toLowerCase().replace(/\s+/g, '-'));
 
-    // Instantly reflect reservation in Firestore
+    // Instantly sync seat selection to backend API
     try {
-      const lobbyRef = doc(db, "lobbies", "main-table");
       const cleanEmail = email.trim().toLowerCase();
-      
-      const updatedSeats = seats.map((s) => {
-        if (s.name === seatName) {
-          return { ...s, email: cleanEmail, avatar: avatarUrl };
-        }
-        if (s.email === cleanEmail) {
-          return { ...s, email: "", avatar: "" };
-        }
-        return s;
+      await fetch("/api/seats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seatName: seatName, email: cleanEmail, avatar: avatarUrl }),
       });
-
-      await setDoc(lobbyRef, { seats: updatedSeats }, { merge: true });
     } catch (error) {
       console.error("Failed to update seat selection:", error);
     }
