@@ -1,10 +1,8 @@
 ﻿"use client";
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { User, Sparkles, ArrowRight, Camera, Check } from "lucide-react";
 
 export default function LobbyPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [avatar, setAvatar] = useState("");
@@ -77,14 +75,14 @@ export default function LobbyPage() {
       return;
     }
 
-    // Save immediately and navigate
     localStorage.setItem("bella_email", finalEmail);
     localStorage.setItem("bella_display_name", finalName);
     if (avatar) {
       localStorage.setItem("bella_avatar", avatar);
     }
 
-    router.push("/table/main-club");
+    // Force hard browser navigation to guarantee entry
+    window.location.href = "/table/main-club";
   };
 
   return (
@@ -151,7 +149,7 @@ export default function LobbyPage() {
 
           <button
             type="submit"
-            className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 active:scale-95"
+            className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
           >
             {saved ? <Check className="w-4 h-4" /> : null}
             {saved ? "Credentials Saved!" : "Save Credentials"}
