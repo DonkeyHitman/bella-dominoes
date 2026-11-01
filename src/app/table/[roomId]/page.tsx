@@ -20,17 +20,34 @@ export default function GameTable() {
   const [isDealt, setIsDealt] = useState(false);
   const [dealingLocked, setDealingLocked] = useState(false);
 
+  const [myEmail, setMyEmail] = useState("");
+  const [myName, setMyName] = useState("");
+  const [myAvatar, setMyAvatar] = useState("");
+
   const socketRef = useRef<Socket | null>(null);
 
-  const myEmail = typeof window !== "undefined" ? localStorage.getItem("bella_email") || "" : "";
-  const myName = typeof window !== "undefined" ? localStorage.getItem("bella_display_name") || "" : "";
-  const myAvatar = typeof window !== "undefined" ? localStorage.getItem("bella_avatar") || "" : "";
+  // Safely load credentials from localStorage on mount
+  useEffect(() => {
+    const email = localStorage.getItem("bella_email") || "";
+    const name = localStorage.getItem("bella_display_name") || "";
+    const avatar = localStorage.getItem("bella_avatar") || "";
 
-  // Check which seat current user currently occupies
+    setMyEmail(email);
+    setMyName(name);
+    setMyAvatar(avatar);
+
+    if (!email) {
+      alert("Please complete your registration in the lobby first.");
+      router.push("/");
+    }
+  }, [router]);
+
   const currentSeat = seats.find(s => s.email.toLowerCase() === myEmail.toLowerCase());
   const allSeatsOccupied = seats.every(s => s.email !== "");
 
   useEffect(() => {
+    if (!myEmail) return;
+
     const socket = io();
     socketRef.current = socket;
 
@@ -57,7 +74,6 @@ export default function GameTable() {
 
   const handleClaimSeat = (seatName: string) => {
     if (!myEmail) {
-      alert("Please complete your registration in the lobby first.");
       router.push("/");
       return;
     }
@@ -70,7 +86,6 @@ export default function GameTable() {
 
   const handleDealClick = () => {
     if (dealingLocked || !allSeatsOccupied) return;
-    // Lock immediately on client to prevent double clicks
     setDealingLocked(true);
     socketRef.current?.emit("game:deal", { roomId, email: myEmail });
   };
