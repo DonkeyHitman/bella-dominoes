@@ -3,35 +3,6 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { User, Sparkles, ArrowRight, Camera, Check } from "lucide-react";
 
-function shrinkDataUrl(dataUrl: string, maxDim = 80, quality = 0.65): Promise<string> {
-  return new Promise((resolve) => {
-    if (!dataUrl || !dataUrl.startsWith("data:image")) {
-      resolve("");
-      return;
-    }
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      let w = img.width;
-      let h = img.height;
-      if (w > h && w > maxDim) {
-        h = Math.round((h * maxDim) / w);
-        w = maxDim;
-      } else if (h > maxDim) {
-        w = Math.round((w * maxDim) / h);
-        h = maxDim;
-      }
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      ctx?.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL("image/jpeg", quality));
-    };
-    img.onerror = () => resolve("");
-    img.src = dataUrl;
-  });
-}
-
 export default function LobbyPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -46,13 +17,7 @@ export default function LobbyPage() {
 
     setEmail(savedEmail);
     setDisplayName(savedName);
-
-    if (savedAvatar) {
-      shrinkDataUrl(savedAvatar).then((compressed) => {
-        setAvatar(compressed);
-        localStorage.setItem("bella_avatar", compressed);
-      });
-    }
+    setAvatar(savedAvatar);
   }, []);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,45 +25,62 @@ export default function LobbyPage() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async (event) => {
-      const rawUrl = event.target?.result as string;
-      const compressed = await shrinkDataUrl(rawUrl, 80, 0.65);
-      setAvatar(compressed);
-      localStorage.setItem("bella_avatar", compressed);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_SIZE = 80;
+        let width = img.width;
+        let height = img.height;
+        if (width > height && width > MAX_SIZE) {
+          height = Math.round((height * MAX_SIZE) / width);
+          width = MAX_SIZE;
+        } else if (height > MAX_SIZE) {
+          width = Math.round((width * MAX_SIZE) / height);
+          height = MAX_SIZE;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d")?.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL("image/jpeg", 0.65);
+        setAvatar(compressed);
+        localStorage.setItem("bella_avatar", compressed);
+      };
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !displayName.trim()) {
       alert("Please enter both your display name and email address.");
       return;
     }
 
-    localStorage.setItem("bella_email", email.trim());
+    localStorage.setItem("bella_email", email.trim().toLowerCase());
     localStorage.setItem("bella_display_name", displayName.trim());
     if (avatar) {
-      const compressed = await shrinkDataUrl(avatar, 80, 0.65);
-      setAvatar(compressed);
-      localStorage.setItem("bella_avatar", compressed);
+      localStorage.setItem("bella_avatar", avatar);
     }
 
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
 
-  const handleEnterTable = async () => {
+  const handleEnterTable = () => {
     if (!email.trim() || !displayName.trim()) {
-      alert("Please save your credentials before entering the table.");
+      alert("Please enter and save your email and display name first.");
       return;
     }
-    localStorage.setItem("bella_email", email.trim());
+
+    // Synchronously commit to localStorage so table page detects email immediately
+    localStorage.setItem("bella_email", email.trim().toLowerCase());
     localStorage.setItem("bella_display_name", displayName.trim());
     if (avatar) {
-      const compressed = await shrinkDataUrl(avatar, 80, 0.65);
-      localStorage.setItem("bella_avatar", compressed);
+      localStorage.setItem("bella_avatar", avatar);
     }
+
     router.push("/table/main-club");
   };
 
@@ -175,8 +157,9 @@ export default function LobbyPage() {
 
         <div className="w-full mt-6 pt-6 border-t border-slate-800">
           <button
+            type="button"
             onClick={handleEnterTable}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider py-4 rounded-xl shadow-xl transition flex items-center justify-center gap-2 active:scale-95"
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider py-4 rounded-xl shadow-xl transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
           >
             Enter Dominoes Table <ArrowRight className="w-4 h-4" />
           </button>
