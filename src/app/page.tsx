@@ -1,52 +1,27 @@
 ﻿"use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Upload, User, CheckCircle2 } from "lucide-react";
+import { Sparkles, Upload, User, ArrowRight } from "lucide-react";
 
-export default function SingleTableLobby() {
+export default function SimplifiedLobby() {
   const router = useRouter();
   
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
 
-  // Seat status tracking for the 4 fixed players
-  const [seats, setSeats] = useState([
-    { id: "player-a", name: "PLAYER A", email: "", avatar: "" },
-    { id: "player-b", name: "PLAYER B", email: "", avatar: "" },
-    { id: "player-c", name: "PLAYER C", email: "", avatar: "" },
-    { id: "player-d", name: "PLAYER D", email: "", avatar: "" },
-  ]);
-
-  // Load local session and fetch seats once on mount (without polling interval)
   useEffect(() => {
     const savedEmail = localStorage.getItem("bella_email");
-    const savedSeat = localStorage.getItem("bella_display_name");
+    const savedName = localStorage.getItem("bella_display_name");
     const savedAvatar = localStorage.getItem("bella_avatar");
 
-    if (savedEmail && savedSeat && savedAvatar) {
+    if (savedEmail && savedName && savedAvatar) {
       setEmail(savedEmail);
-      setSelectedSeat(savedSeat);
+      setDisplayName(savedName);
       setAvatarUrl(savedAvatar);
       setIsRegistered(true);
     }
-
-    const fetchSeats = async () => {
-      try {
-        const res = await fetch("/api/seats");
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.seats) {
-            setSeats(data.seats);
-          }
-        }
-      } catch {
-        // Fallback silently if offline or endpoint is adjusting
-      }
-    };
-
-    fetchSeats();
   }, []);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,63 +36,22 @@ export default function SingleTableLobby() {
     reader.readAsDataURL(file);
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !avatarUrl || !selectedSeat) return;
+    if (!email.trim() || !displayName.trim() || !avatarUrl) return;
 
     const cleanEmail = email.trim().toLowerCase();
+    const cleanName = displayName.trim();
 
-    // Save user credentials locally
     localStorage.setItem("bella_email", cleanEmail);
-    localStorage.setItem("bella_display_name", selectedSeat);
-    localStorage.setItem("bella_dominoes_player_id", selectedSeat.toLowerCase().replace(/\s+/g, '-'));
+    localStorage.setItem("bella_display_name", cleanName);
+    localStorage.setItem("bella_dominoes_player_id", cleanName.toLowerCase().replace(/\s+/g, '-'));
     setIsRegistered(true);
-
-    // Sync seat reservation with backend API and update state
-    try {
-      const res = await fetch("/api/seats", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seatName: selectedSeat, email: cleanEmail, avatar: avatarUrl }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.seats) setSeats(data.seats);
-      }
-    } catch (error) {
-      console.error("Failed to sync seat registration:", error);
-    }
   };
 
-  const handleSeatClick = async (seatName: string, isOccupied: boolean) => {
-    if (isOccupied || !isRegistered) return;
-    
-    setSelectedSeat(seatName);
-    localStorage.setItem("bella_display_name", seatName);
-    localStorage.setItem("bella_dominoes_player_id", seatName.toLowerCase().replace(/\s+/g, '-'));
-
-    // Instantly sync seat selection to backend API and update state
-    try {
-      const cleanEmail = email.trim().toLowerCase();
-      const res = await fetch("/api/seats", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seatName: seatName, email: cleanEmail, avatar: avatarUrl }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.seats) setSeats(data.seats);
-      }
-    } catch (error) {
-      console.error("Failed to update seat selection:", error);
-    }
-  };
-
-  const handleJoinTable = () => {
+  const handleEnterTable = () => {
     router.push("/table/main-club");
   };
-
-  const allSeatsOccupied = seats.every(s => s.email !== "");
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 select-none font-sans text-white">
@@ -129,7 +63,7 @@ export default function SingleTableLobby() {
             <Sparkles className="w-7 h-7 text-amber-400" />
           </div>
           <h1 className="text-2xl font-black tracking-wide">B.E.L.L.A. Dominoes Club</h1>
-          <p className="text-amber-400/80 text-[10px] font-bold tracking-widest uppercase mt-1">Single Active Table Lobby</p>
+          <p className="text-amber-400/80 text-[10px] font-bold tracking-widest uppercase mt-1">Player Registration</p>
         </div>
 
         {/* Registration Form */}
@@ -146,17 +80,28 @@ export default function SingleTableLobby() {
             </div>
             <label className="cursor-pointer bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold px-4 py-2 rounded-xl border border-slate-700 transition flex items-center gap-2 shadow-sm">
               <Upload className="w-3.5 h-3.5" />
-              Upload Photo (Required)
+              Upload Avatar Photo
               <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
             </label>
           </div>
 
+          {/* Display Name Input */}
+          <div className="mb-4">
+            <label className="block text-[10px] text-slate-400 font-bold tracking-widest uppercase mb-1.5">Display Name</label>
+            <input 
+              type="text" 
+              required
+              autoComplete="off"
+              placeholder="e.g. John Vu"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 text-white text-sm px-4 py-2.5 rounded-xl outline-none focus:border-amber-500 transition"
+            />
+          </div>
+
           {/* Email Input */}
           <div className="mb-4">
-            <div className="flex justify-between items-end mb-1.5">
-              <label className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Email Address</label>
-              <span className="text-[9px] text-rose-400 uppercase font-bold tracking-wider">Required</span>
-            </div>
+            <label className="block text-[10px] text-slate-400 font-bold tracking-widest uppercase mb-1.5">Email Address</label>
             <input 
               type="email" 
               required
@@ -172,61 +117,17 @@ export default function SingleTableLobby() {
             type="submit"
             className="w-full bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-sm uppercase tracking-wider py-3 rounded-xl shadow-lg transition active:scale-[0.98]"
           >
-            {isRegistered ? "Registration Updated" : "Register Credentials"}
+            {isRegistered ? "Credentials Updated" : "Save Credentials"}
           </button>
         </form>
 
-        {/* Select Your Seat Section */}
-        <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 mb-6">
-          <label className="block text-center text-xs text-slate-300 font-bold tracking-widest uppercase mb-4">Select Your Seat</label>
-          
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            {seats.map((seat) => {
-              const isSelected = selectedSeat === seat.name;
-              const isOccupied = seat.email !== "";
-
-              return (
-                <div 
-                  key={seat.id}
-                  onClick={() => handleSeatClick(seat.name, isOccupied)}
-                  className={`p-3 rounded-2xl border transition flex flex-col justify-between ${
-                    isSelected 
-                      ? "bg-amber-500/10 border-amber-500 shadow-md ring-2 ring-amber-500/30" 
-                      : isOccupied 
-                      ? "bg-slate-900/40 border-slate-800 opacity-70 cursor-not-allowed" 
-                      : "bg-slate-900 border-slate-700 hover:border-emerald-500 cursor-pointer"
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-black text-white">{seat.name}</span>
-                    {isSelected && <CheckCircle2 className="w-4 h-4 text-amber-400" />}
-                  </div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider">
-                    {isSelected ? (
-                      <span className="text-amber-400">Your Seat</span>
-                    ) : isOccupied ? (
-                      <span className="text-rose-400">Occupied</span>
-                    ) : (
-                      <span className="text-emerald-400">Open - Claim</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <p className="text-[11px] text-slate-400 text-center leading-relaxed">
-            Game will begin automatically once all four seats (A, B, C, D) are occupied by registered human players.
-          </p>
-        </div>
-
-        {/* Join Table Action */}
+        {/* Enter Table Action */}
         <button 
-          onClick={handleJoinTable}
-          disabled={!isRegistered || !allSeatsOccupied}
-          className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-black text-sm uppercase tracking-wider py-3.5 rounded-2xl shadow-xl transition"
+          onClick={handleEnterTable}
+          disabled={!isRegistered}
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-black text-sm uppercase tracking-wider py-3.5 rounded-2xl shadow-xl transition flex items-center justify-center gap-2"
         >
-          {allSeatsOccupied ? "Join Deployed Table" : "Waiting For All 4 Players..."}
+          Enter Dominoes Table <ArrowRight className="w-4 h-4" />
         </button>
 
       </div>

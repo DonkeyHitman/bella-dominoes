@@ -1,0 +1,32 @@
+export const translations = {
+  en: {
+    activeTable: "Active Table",
+    copyLink: "Copy Link",
+    copied: "Copied!",
+    leaveTable: "Leave Table",
+    tableChat: "Table Chat",
+    typeMessage: "Type...",
+    send: "Send",
+    waitingForPlayer: "Waiting for Player",
+    yourTurn: "Your Turn — Double-click tile to play",
+    noMoves: "No Valid Moves Available!",
+    passTurn: "Pass Turn",
+    profileRegistered: "Profile registered successfully!",
+    loggedInExisting: "Logged in with existing profile!",
+  },
+  vi: {
+    activeTable: "Bàn Hiện Tại",
+    copyLink: "Sao Chép Liên Kết",
+    copied: "Đã Sao Chép!",
+    leaveTable: "Rời Bàn",
+    tableChat: "Trò Chuyện Bàn",
+    typeMessage: "Nhập tin nhắn...",
+    send: "Gửi",
+    waitingForPlayer: "Đang Chờ Người Chơi",
+    yourTurn: "Lượt của bạn — Nhấp đúp quân cờ để đánh",
+    noMoves: "Không có nước đi hợp lệ!",
+    passTurn: "Bỏ Lượt",
+    profileRegistered: "Đăng ký hồ sơ thành công!",
+    loggedInExisting: "Đã đăng nhập bằng hồ sơ hiện có!",
+  }
+};
