@@ -81,9 +81,16 @@ export default function TablePage() {
     if (savedLang) setLang(savedLang);
 
     const savedId = localStorage.getItem("bella_dominoes_player_id");
-    if (!savedId) {
+    const savedName = localStorage.getItem("bella_display_name");
+    const savedEmail = localStorage.getItem("bella_email");
+
+    if (!savedId || !savedName || !savedEmail) {
       router.push(`/?invite=${roomId}`);
       return;
+    }
+
+    if (typeof window !== "undefined" && screen.orientation && "lock" in screen.orientation) {
+      (screen.orientation as any).lock("landscape").catch(() => {});
     }
     
     setMyPlayerId(savedId);
@@ -229,7 +236,8 @@ export default function TablePage() {
   }, [seats, myPlayerId, roomId]);
 
 const myBase = myPlayerId ? rosterMap[myPlayerId] : null;
-  const myName = myBase?.name ?? "John";
+  const savedDisplayName = typeof window !== "undefined" ? localStorage.getItem("bella_display_name") : null;
+  const myName = myBase?.name ?? savedDisplayName ?? "John";
   const myAvatarUrl = customAvatar || myBase?.avatarUrl || `https://api.dicebear.com/9.x/adventurer/svg?seed=${myPlayerId || "John"}`;
   const playerNames = useMemo(() => {
     const m: Record<string, string> = { "bot-3": "Bot Tiến", "bot-2": "Bot Vượng", "bot-1": "Bot Tuấn" };
@@ -244,8 +252,21 @@ const myBase = myPlayerId ? rosterMap[myPlayerId] : null;
   const hasNoMoves = evaluation.playableTileIds.size === 0;
 
   return (
-    <div className="relative w-screen h-screen bg-slate-950 overflow-auto flex select-none">
+    <div className="relative w-screen h-screen bg-slate-950 overflow-hidden flex select-none">
       
+      {/* Mobile Portrait Lock Overlay */}
+      <div className="hidden portrait:flex fixed inset-0 z-[999] bg-slate-950 flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 animate-bounce">
+          <span className="text-3xl">🔄</span>
+        </div>
+        <h2 className="text-xl font-black text-white tracking-wide mb-2 uppercase">
+          Rotate Your Device
+        </h2>
+        <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+          B.E.L.L.A. Dominoes Table requires <span className="text-amber-400 font-bold">Landscape Mode</span> for the best 4-player board experience.
+        </p>
+      </div>
+
       {/* Main Playable Area */}
       <div className="relative flex-1 h-full">
         <div className="absolute inset-0 flex items-center justify-center z-0">

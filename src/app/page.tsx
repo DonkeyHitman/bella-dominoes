@@ -17,7 +17,9 @@ export default function LobbyPage() {
   useEffect(() => {
     const savedName = localStorage.getItem("bella_display_name");
     const savedEmail = localStorage.getItem("bella_email");
-    if (savedName && savedEmail) {
+    const savedId = localStorage.getItem("bella_dominoes_player_id");
+    
+    if (savedName && savedEmail && savedId) {
       setDisplayName(savedName);
       setEmailAddress(savedEmail);
       setIsRegistered(true);
@@ -27,12 +29,30 @@ export default function LobbyPage() {
     setMyTables(savedTables);
   }, []);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!displayName.trim() || !emailAddress.trim()) return;
     
-    localStorage.setItem("bella_display_name", displayName.trim());
-    localStorage.setItem("bella_email", emailAddress.trim());
+    const cleanName = displayName.trim();
+    const cleanEmail = emailAddress.trim().toLowerCase();
+    
+    const existingId = localStorage.getItem("bella_dominoes_player_id");
+    const playerId = existingId || `player-${cleanEmail.replace(/[^a-z0-9]/g, "")}`;
+
+    localStorage.setItem("bella_display_name", cleanName);
+    localStorage.setItem("bella_email", cleanEmail);
+    localStorage.setItem("bella_dominoes_player_id", playerId);
+
+    try {
+      await fetch("/api/players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: playerId, name: cleanName, email: cleanEmail }),
+      });
+    } catch {
+      // Fallback gracefully if /api/players is GET-only
+    }
+
     setIsRegistered(true);
   };
 
