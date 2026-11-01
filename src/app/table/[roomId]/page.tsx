@@ -132,7 +132,7 @@ export default function GameTable() {
       {/* Main Table Layout */}
       <div className="w-full max-w-5xl my-6 flex flex-col items-center justify-center flex-1 gap-6">
         
-        {/* Seat Selection / Display Grid */}
+        {/* Seats Grid */}
         <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-4">
           {seats.map((seat) => {
             const isMySeat = seat.email && myEmail && seat.email.toLowerCase() === myEmail.toLowerCase();
@@ -215,7 +215,7 @@ export default function GameTable() {
           })}
         </div>
 
-        {/* Central Game Board / Action Area */}
+        {/* Central Game Board Area */}
         <div className="w-full bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col items-center justify-center min-h-[220px] shadow-2xl">
           {!allSeatsOccupied ? (
             <div className="text-center">
@@ -249,23 +249,28 @@ export default function GameTable() {
                 )}
               </div>
 
-              {/* Board Display */}
-              <div className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-4 min-h-[100px] flex items-center justify-center flex-wrap gap-2 overflow-x-auto">
+              {/* Polished Board Container */}
+              <div className="w-full bg-slate-950/80 border border-slate-800/80 rounded-2xl p-6 min-h-[140px] flex items-center justify-center flex-wrap gap-3 shadow-inner overflow-x-auto">
                 {board?.tiles && board.tiles.length > 0 ? (
                   board.tiles.map((t: any, idx: number) => (
-                    <div key={idx} className="bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl text-xs font-bold shadow-md">
-                      [{t.high} | {t.low}]
+                    <div 
+                      key={idx} 
+                      className="bg-gradient-to-b from-slate-800 to-slate-900 border border-slate-700 hover:border-amber-500/50 px-4 py-3 rounded-2xl shadow-xl flex flex-col items-center justify-center transition transform hover:-translate-y-0.5"
+                    >
+                      <div className="text-xs font-black text-amber-400 tracking-widest">{t.high}</div>
+                      <div className="w-6 h-[1px] bg-slate-700 my-1"></div>
+                      <div className="text-xs font-black text-amber-400 tracking-widest">{t.low}</div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-slate-500">Board is empty. Play the starting tile.</p>
+                  <p className="text-xs text-slate-500 font-medium">Board is empty. Play the starting tile.</p>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Player's Dealt Hand */}
+        {/* Player's Dealt Hand (Clean Original Styling) */}
         {isDealt && (
           <div className="w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col items-center">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Your Hand</h3>
@@ -276,9 +281,11 @@ export default function GameTable() {
                     key={tile.id}
                     onClick={() => handlePlayTile(tile.id, "right")}
                     disabled={!isMyTurn}
-                    className="bg-gradient-to-b from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-700 hover:border-amber-500 px-4 py-3 rounded-2xl shadow-lg transition flex flex-col items-center gap-1 active:scale-95"
+                    className="bg-gradient-to-b from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700 hover:border-amber-500 px-5 py-4 rounded-2xl shadow-lg transition flex flex-col items-center justify-center gap-1.5 active:scale-95 group"
                   >
-                    <span className="text-sm font-black text-amber-400">{tile.high} | {tile.low}</span>
+                    <span className="text-sm font-black text-amber-400 group-hover:scale-110 transition">{tile.high}</span>
+                    <div className="w-8 h-[1px] bg-slate-700"></div>
+                    <span className="text-sm font-black text-amber-400 group-hover:scale-110 transition">{tile.low}</span>
                   </button>
                 ))
               ) : (
