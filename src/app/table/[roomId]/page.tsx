@@ -26,7 +26,6 @@ export default function GameTable() {
 
   const socketRef = useRef<Socket | null>(null);
 
-  // Safely load credentials from localStorage on mount
   useEffect(() => {
     const email = localStorage.getItem("bella_email") || "";
     const name = localStorage.getItem("bella_display_name") || "";
@@ -41,7 +40,6 @@ export default function GameTable() {
     }
   }, [router]);
 
-  // Safe checks to prevent undefined crashes
   const currentSeat = seats.find(s => s.email && myEmail && s.email.toLowerCase() === myEmail.toLowerCase());
   const allSeatsOccupied = seats.every(s => s.email !== "");
 
@@ -149,7 +147,7 @@ export default function GameTable() {
 
                 <div className="text-center mb-3">
                   <div className="text-xs font-bold truncate max-w-[120px]">
-                    {isOccupied ? seat.email.split("@")[0] : "Open Seat"}
+                    {isOccupied && seat.email ? seat.email.split("@")[0] : "Open Seat"}
                   </div>
                   <div className="text-[10px] uppercase font-bold tracking-wider mt-0.5">
                     {isMySeat ? (
