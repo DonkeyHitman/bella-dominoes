@@ -13,10 +13,10 @@ export default function SingleTableLobby() {
 
   // Hardcoded seat status tracking for the 4 fixed players
   const [seats, setSeats] = useState([
-    { id: "player-a", name: "PLAYER A", email: "caonhavu@gmail.com", avatar: "" },
+    { id: "player-a", name: "PLAYER A", email: "", avatar: "" },
     { id: "player-b", name: "PLAYER B", email: "", avatar: "" },
     { id: "player-c", name: "PLAYER C", email: "", avatar: "" },
-    { id: "player-d", name: "PLAYER D", email: "tracy@example.com", avatar: "" },
+    { id: "player-d", name: "PLAYER D", email: "", avatar: "" },
   ]);
 
   useEffect(() => {
