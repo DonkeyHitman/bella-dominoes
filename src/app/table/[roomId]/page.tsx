@@ -37,12 +37,12 @@ export default function GameTable() {
     setMyAvatar(avatar);
 
     if (!email) {
-      alert("Please complete your registration in the lobby first.");
       router.push("/");
     }
   }, [router]);
 
-  const currentSeat = seats.find(s => s.email.toLowerCase() === myEmail.toLowerCase());
+  // Safe checks to prevent undefined crashes
+  const currentSeat = seats.find(s => s.email && myEmail && s.email.toLowerCase() === myEmail.toLowerCase());
   const allSeatsOccupied = seats.every(s => s.email !== "");
 
   useEffect(() => {
@@ -123,7 +123,7 @@ export default function GameTable() {
         {/* Seat Selection / Display Grid */}
         <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {seats.map((seat) => {
-            const isMySeat = seat.email.toLowerCase() === myEmail.toLowerCase();
+            const isMySeat = seat.email && myEmail && seat.email.toLowerCase() === myEmail.toLowerCase();
             const isOccupied = seat.email !== "";
 
             return (
