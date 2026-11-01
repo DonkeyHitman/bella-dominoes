@@ -13,9 +13,9 @@ export default function LobbyPage() {
     const savedName = localStorage.getItem("bella_display_name") || "";
     const savedAvatar = localStorage.getItem("bella_avatar") || "";
 
-    setEmail(savedEmail);
-    setDisplayName(savedName);
-    setAvatar(savedAvatar);
+    if (savedEmail) setEmail(savedEmail);
+    if (savedName) setDisplayName(savedName);
+    if (savedAvatar) setAvatar(savedAvatar);
   }, []);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,13 +51,11 @@ export default function LobbyPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !displayName.trim()) {
-      alert("Please enter both your display name and email address.");
-      return;
-    }
+    const finalEmail = email.trim().toLowerCase() || "player@bella.com";
+    const finalName = displayName.trim() || "Player";
 
-    localStorage.setItem("bella_email", email.trim().toLowerCase());
-    localStorage.setItem("bella_display_name", displayName.trim());
+    localStorage.setItem("bella_email", finalEmail);
+    localStorage.setItem("bella_display_name", finalName);
     if (avatar) {
       localStorage.setItem("bella_avatar", avatar);
     }
@@ -67,13 +65,8 @@ export default function LobbyPage() {
   };
 
   const handleEnterTable = () => {
-    const finalEmail = email.trim().toLowerCase() || localStorage.getItem("bella_email") || "";
-    const finalName = displayName.trim() || localStorage.getItem("bella_display_name") || "";
-
-    if (!finalEmail || !finalName) {
-      alert("Please enter your display name and email address to enter the table.");
-      return;
-    }
+    const finalEmail = email.trim().toLowerCase() || localStorage.getItem("bella_email") || "player@bella.com";
+    const finalName = displayName.trim() || localStorage.getItem("bella_display_name") || "Player";
 
     localStorage.setItem("bella_email", finalEmail);
     localStorage.setItem("bella_display_name", finalName);
@@ -81,8 +74,8 @@ export default function LobbyPage() {
       localStorage.setItem("bella_avatar", avatar);
     }
 
-    // Force hard browser navigation to guarantee entry
-    window.location.href = "/table/main-club";
+    // Unconditional hard redirect to the game table
+    window.location.assign("/table/main-club");
   };
 
   return (
@@ -128,7 +121,6 @@ export default function LobbyPage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g. John"
-              required
               className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 text-white text-sm rounded-xl px-4 py-3 outline-none transition shadow-inner"
             />
           </div>
@@ -142,7 +134,6 @@ export default function LobbyPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="e.g. caonhavu@gmail.com"
-              required
               className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 text-white text-sm rounded-xl px-4 py-3 outline-none transition shadow-inner"
             />
           </div>
