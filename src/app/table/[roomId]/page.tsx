@@ -42,7 +42,7 @@ export default function GameTable() {
     }
   }, [router]);
 
-  const currentSeat = seats.find(s => s.email && myEmail && s.email.toLowerCase() === myEmail.toLowerCase());
+  const currentSeat = seats.find(s => s.email && myEmail && s.email.toLowerCase().trim() === myEmail.toLowerCase().trim());
   const allSeatsOccupied = seats.every(s => s.email !== "");
 
   useEffect(() => {
@@ -67,6 +67,8 @@ export default function GameTable() {
       setIsDealt(true);
       setDealingLocked(true);
       if (Array.isArray(data.myHand)) setMyHand(data.myHand);
+      // Request fresh state to ensure hand sync
+      socket.emit("room:join", { roomId, playerId: myEmail, playerName: myName });
     });
 
     return () => {
@@ -100,7 +102,7 @@ export default function GameTable() {
     socketRef.current?.emit("game:passTurn", { roomId, playerId: myEmail });
   };
 
-  const isMyTurn = activeTurnPlayerId && myEmail && activeTurnPlayerId.toLowerCase() === myEmail.toLowerCase();
+  const isMyTurn = activeTurnPlayerId && myEmail && activeTurnPlayerId.toLowerCase().trim() === myEmail.toLowerCase().trim();
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-between p-4 select-none">
@@ -135,10 +137,10 @@ export default function GameTable() {
         {/* Seats Grid */}
         <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-4">
           {seats.map((seat) => {
-            const isMySeat = seat.email && myEmail && seat.email.toLowerCase() === myEmail.toLowerCase();
+            const isMySeat = seat.email && myEmail && seat.email.toLowerCase().trim() === myEmail.toLowerCase().trim();
             const isOccupied = seat.email !== "";
-            const isTurn = activeTurnPlayerId && seat.email && activeTurnItemMatch(activeTurnPlayerId, seat.email);
-            const tileCount = seat.email ? opponentTileCounts[seat.email] ?? 0 : 0;
+            const isTurn = activeTurnPlayerId && seat.email && activeTurnPlayerId.toLowerCase().trim() === seat.email.toLowerCase().trim();
+            const tileCount = seat.email ? opponentTileCounts[seat.email.toLowerCase().trim()] ?? 7 : 0;
 
             return (
               <div 
@@ -270,10 +272,10 @@ export default function GameTable() {
           )}
         </div>
 
-        {/* Player's Dealt Hand (Clean Original Styling) */}
+        {/* Player's Dealt Hand */}
         {isDealt && (
           <div className="w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col items-center">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Your Hand</h3>
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Your Hand ({myHand.length} tiles)</h3>
             <div className="flex flex-wrap gap-3 justify-center">
               {myHand && myHand.length > 0 ? (
                 myHand.map((tile) => (
@@ -289,7 +291,7 @@ export default function GameTable() {
                   </button>
                 ))
               ) : (
-                <p className="text-xs text-slate-500">No tiles in hand.</p>
+                <p className="text-xs text-amber-400 animate-pulse font-bold">Synchronizing hand tiles...</p>
               )}
             </div>
           </div>
@@ -299,8 +301,4 @@ export default function GameTable() {
 
     </div>
   );
-}
-
-function activeTurnItemMatch(turnId: string, email: string): boolean {
-  return turnId.toLowerCase().trim() === email.toLowerCase().trim();
 }
