@@ -120,7 +120,9 @@ export default function TablePage() {
     });
 
     socket.on("game:settled", (p) => setSettlement(p));
-    socket.on("chat:message", (msg) => setChatLog((prev) => [...prev, msg]));
+    git add src/app/table/[roomId]/page.tsx
+git commit -m "Remove chat socket listener from game table"
+git push origin main
     socket.on("room:destroyed", (data) => {
       alert(data.message);
       window.location.href = "/";
