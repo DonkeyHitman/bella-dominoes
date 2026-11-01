@@ -69,10 +69,6 @@ export default function TablePage() {
   const [pendingTile, setPendingTile] = useState<DominoTileType | null>(null);
   const [settlement, setSettlement] = useState<PayoutResult | null>(null);
   const [copied, setCopied] = useState(false);
-  
-  const [chatLog, setChatLog] = useState<Array<{ sender: string; text: string }>>([]);
-  const [chatInput, setChatInput] = useState("");
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const strings = t[lang];
 

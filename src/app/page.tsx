@@ -19,7 +19,7 @@ export default function SingleTableLobby() {
     { id: "player-d", name: "PLAYER D", email: "", avatar: "" },
   ]);
 
-  // Load local session and poll backend API for live multi-device seat updates
+  // Load local session and fetch seats once on mount (without polling interval)
   useEffect(() => {
     const savedEmail = localStorage.getItem("bella_email");
     const savedSeat = localStorage.getItem("bella_display_name");
@@ -47,8 +47,6 @@ export default function SingleTableLobby() {
     };
 
     fetchSeats();
-    const interval = setInterval(fetchSeats, 2500); // Poll every 2.5 seconds for instant cross-phone sync
-    return () => clearInterval(interval);
   }, []);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,13 +73,17 @@ export default function SingleTableLobby() {
     localStorage.setItem("bella_dominoes_player_id", selectedSeat.toLowerCase().replace(/\s+/g, '-'));
     setIsRegistered(true);
 
-    // Sync seat reservation with backend API
+    // Sync seat reservation with backend API and update state
     try {
-      await fetch("/api/seats", {
+      const res = await fetch("/api/seats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ seatName: selectedSeat, email: cleanEmail, avatar: avatarUrl }),
       });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.seats) setSeats(data.seats);
+      }
     } catch (error) {
       console.error("Failed to sync seat registration:", error);
     }
@@ -94,14 +96,18 @@ export default function SingleTableLobby() {
     localStorage.setItem("bella_display_name", seatName);
     localStorage.setItem("bella_dominoes_player_id", seatName.toLowerCase().replace(/\s+/g, '-'));
 
-    // Instantly sync seat selection to backend API
+    // Instantly sync seat selection to backend API and update state
     try {
       const cleanEmail = email.trim().toLowerCase();
-      await fetch("/api/seats", {
+      const res = await fetch("/api/seats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ seatName: seatName, email: cleanEmail, avatar: avatarUrl }),
       });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.seats) setSeats(data.seats);
+      }
     } catch (error) {
       console.error("Failed to update seat selection:", error);
     }
@@ -154,6 +160,7 @@ export default function SingleTableLobby() {
             <input 
               type="email" 
               required
+              autoComplete="off"
               placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
