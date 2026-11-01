@@ -55,22 +55,28 @@ export class RoomManager {
     });
 
     socket.on("seat:claim", ({ roomId, seatName, email, avatar, name }) => {
-      const room = this.rooms.get(roomId);
-      if (!room) return;
+      if (!email) return; // Safeguard against empty emails
+      
+      let room = this.rooms.get(roomId);
+      if (!room) {
+        room = this.createEmptyRoomState(roomId, null);
+        this.rooms.set(roomId, room);
+      }
+
+      const cleanEmail = email.toLowerCase().trim();
 
       // Remove this user from any other seat first (allows switching)
       room.seats.forEach(s => {
-        if (s.email.toLowerCase() === email.toLowerCase()) {
+        if (s.email && s.email.toLowerCase().trim() === cleanEmail) {
           s.email = "";
           s.avatar = "";
-          s.name = s.name; // Keep seat title (PLAYER A, etc.)
         }
       });
 
       // Assign to target seat if available
       const targetSeat = room.seats.find(s => s.name === seatName);
       if (targetSeat && targetSeat.email === "") {
-        targetSeat.email = email;
+        targetSeat.email = cleanEmail;
         targetSeat.avatar = avatar || "";
       }
 
@@ -78,11 +84,13 @@ export class RoomManager {
     });
 
     socket.on("seat:leave", ({ roomId, email }) => {
+      if (!email) return;
       const room = this.rooms.get(roomId);
-      if (!room || !email) return;
+      if (!room) return;
 
+      const cleanEmail = email.toLowerCase().trim();
       room.seats.forEach(s => {
-        if (s.email.toLowerCase() === email.toLowerCase()) {
+        if (s.email && s.email.toLowerCase().trim() === cleanEmail) {
           s.email = "";
           s.avatar = "";
         }
@@ -104,7 +112,6 @@ export class RoomManager {
     socket.on("disconnect", () => {
       const playerId = socket.data.playerId;
       if (!playerId) return;
-      // Handle socket cleanup if needed
     });
   }
 
@@ -147,7 +154,7 @@ export class RoomManager {
 
     this.broadcastRoomState(room);
     this.io.to(room.roomId).emit("game:dealt", {
-      myHand: [] // Broadcasted individually per socket in broadcastRoomState
+      myHand: []
     });
   }
 
