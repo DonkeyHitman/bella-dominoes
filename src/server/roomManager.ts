@@ -40,7 +40,7 @@ export class RoomManager {
   }
 
   public registerSocket(socket: Socket): void {
-    socket.on("room:join", async ({ roomId, playerId, playerName }) => {
+    socket.on("room:join", async ({ roomId, playerId }) => {
       const cleanId = playerId ? playerId.toLowerCase().trim() : "";
       socket.data.playerId = cleanId;
       socket.join(roomId);
@@ -54,7 +54,7 @@ export class RoomManager {
       this.broadcastRoomState(room);
     });
 
-    socket.on("seat:claim", ({ roomId, seatName, email, avatar, name }) => {
+    socket.on("seat:claim", ({ roomId, seatName, email, avatar }) => {
       if (!email) return;
       
       let room = this.rooms.get(roomId);
@@ -99,7 +99,7 @@ export class RoomManager {
       this.broadcastRoomState(room);
     });
 
-    socket.on("game:deal", ({ roomId, email }) => {
+    socket.on("game:deal", ({ roomId }) => {
       const room = this.rooms.get(roomId);
       if (!room) return;
 
@@ -192,18 +192,16 @@ export class RoomManager {
 
     const { moves } = getPlayableMovesForHand(hand, boardEnds, room.mustPlaySixSix);
     
-    // Match exact tileId + targetEnd, or fallback to the sole legal move for that tileId (e.g., on root or when only 1 end matches)
     let chosen = moves.find((m) => m.tile.id === tileId && m.targetEnd === targetEnd);
     if (!chosen) {
       chosen = moves.find((m) => m.tile.id === tileId);
     }
-    // Additional fallback if tileId format differs (e.g., "6-6" vs "tile-6-6")
-    if (!chosen && room.mustPlaySixSix) {
-      chosen = moves.find((m) => m.tile.pipA === 6 && m.tile.pipB === 6);
+    if (!chosen && room.mustPlaySixSix && moves.length === 1) {
+      chosen = moves[0];
     }
 
     if (!chosen) {
-      console.log(`[Move Rejected] Tile ${tileId} on ${targetEnd} not in legal moves:`, moves);
+      console.log(`[Move Rejected] Tile ${tileId} on ${targetEnd} not in legal moves.`);
       return;
     }
 
