@@ -67,7 +67,6 @@ export default function GameTable() {
       setIsDealt(true);
       setDealingLocked(true);
       if (Array.isArray(data.myHand)) setMyHand(data.myHand);
-      // Request fresh state to ensure hand sync
       socket.emit("room:join", { roomId, playerId: myEmail, playerName: myName });
     });
 
@@ -105,10 +104,10 @@ export default function GameTable() {
   const isMyTurn = activeTurnPlayerId && myEmail && activeTurnPlayerId.toLowerCase().trim() === myEmail.toLowerCase().trim();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-between p-4 select-none">
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-between p-6 select-none">
       
       {/* Top Bar */}
-      <div className="w-full max-w-5xl flex justify-between items-center bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-lg">
+      <div className="w-full max-w-6xl flex justify-between items-center bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-lg">
         <div>
           <h1 className="text-lg font-black tracking-wide text-amber-400">B.E.L.L.A. Dominoes Table</h1>
           <p className="text-xs text-slate-400">Room: <span className="text-white font-bold">{roomId}</span></p>
@@ -131,10 +130,73 @@ export default function GameTable() {
         </div>
       </div>
 
-      {/* Main Table Layout */}
-      <div className="w-full max-w-5xl my-6 flex flex-col items-center justify-center flex-1 gap-6">
+      {/* Table Layout: Felt Table & Surrounding Seats */}
+      <div className="w-full max-w-6xl my-6 flex flex-col items-center justify-center flex-1 gap-6">
         
-        {/* Seats Grid */}
+        {/* Central Game Table Felt */}
+        <div className="w-full bg-emerald-950/30 border-2 border-emerald-900/60 rounded-[3rem] p-8 shadow-2xl relative flex flex-col items-center justify-center min-h-[320px]">
+          
+          {/* Table Header / Turn Status */}
+          <div className="absolute top-4 left-8 right-8 flex justify-between items-center">
+            <span className="text-xs font-black uppercase tracking-widest text-emerald-400/80">
+              {!allSeatsOccupied 
+                ? `Waiting for seats (${seats.filter(s => s.email !== "").length}/4)` 
+                : !isDealt 
+                ? "All Seats Claimed — Ready to Deal" 
+                : isMyTurn 
+                ? "Your Turn to Play!" 
+                : "Game in Progress"}
+            </span>
+            {isDealt && isMyTurn && (
+              <button 
+                onClick={handlePassTurn}
+                className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 px-3 py-1 rounded-xl text-xs font-bold border border-rose-500/30 transition shadow-md"
+              >
+                Pass Turn
+              </button>
+            )}
+          </div>
+
+          {/* Board Display or Deal Button / Waiting Prompt */}
+          <div className="w-full flex flex-col items-center justify-center mt-6">
+            {!allSeatsOccupied ? (
+              <div className="text-center">
+                <p className="text-sm font-bold text-slate-300 mb-1">Choose an open seat around the table below</p>
+                <p className="text-xs text-slate-500">The Deal button will appear once all 4 players have claimed their seats.</p>
+              </div>
+            ) : !isDealt ? (
+              <div className="flex flex-col items-center animate-bounce">
+                <button
+                  onClick={handleDealClick}
+                  disabled={dealingLocked}
+                  className="bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-black text-sm uppercase tracking-wider px-10 py-5 rounded-2xl shadow-2xl transition flex items-center gap-3 active:scale-95 border border-emerald-300/40"
+                >
+                  <Play className="w-5 h-5 fill-current" /> {dealingLocked ? "Dealing..." : "Deal Dominoes"}
+                </button>
+              </div>
+            ) : (
+              <div className="w-full bg-slate-950/80 border border-slate-800/80 rounded-2xl p-6 min-h-[140px] flex items-center justify-center flex-wrap gap-3 shadow-inner overflow-x-auto">
+                {board?.tiles && board.tiles.length > 0 ? (
+                  board.tiles.map((t: any, idx: number) => (
+                    <div 
+                      key={idx} 
+                      className="bg-gradient-to-b from-slate-800 to-slate-900 border border-slate-700 hover:border-amber-500/50 px-4 py-3 rounded-2xl shadow-xl flex flex-col items-center justify-center transition transform hover:-translate-y-0.5"
+                    >
+                      <div className="text-xs font-black text-amber-400 tracking-widest">{t.high}</div>
+                      <div className="w-6 h-[1px] bg-slate-700 my-1"></div>
+                      <div className="text-xs font-black text-amber-400 tracking-widest">{t.low}</div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-400 font-medium">Board is empty. Play the starting tile.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* 4 Seats Positioned Around the Table */}
         <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-4">
           {seats.map((seat) => {
             const isMySeat = seat.email && myEmail && seat.email.toLowerCase().trim() === myEmail.toLowerCase().trim();
@@ -147,7 +209,7 @@ export default function GameTable() {
                 key={seat.id}
                 className={`p-4 rounded-2xl border flex flex-col items-center justify-between transition ${
                   isTurn 
-                    ? "bg-amber-500/20 border-amber-400 ring-4 ring-amber-500/40 shadow-xl" 
+                    ? "bg-amber-500/25 border-amber-400 ring-4 ring-amber-500/40 shadow-xl" 
                     : isMySeat 
                     ? "bg-amber-500/10 border-amber-500 shadow-lg" 
                     : isOccupied 
@@ -178,11 +240,11 @@ export default function GameTable() {
                   </div>
                   <div className="text-[10px] uppercase font-bold tracking-wider mt-0.5">
                     {isMySeat ? (
-                      <span className="text-amber-400">Your Seat</span>
+                      <span className="text-amber-400 font-black">Your Seat</span>
                     ) : isOccupied ? (
-                      <span className="text-rose-400">Occupied</span>
+                      <span className="text-rose-400 font-bold">Occupied</span>
                     ) : (
-                      <span className="text-emerald-400">Available</span>
+                      <span className="text-emerald-400 font-bold">Available</span>
                     )}
                   </div>
                 </div>
@@ -192,7 +254,7 @@ export default function GameTable() {
                   {isMySeat && !isDealt ? (
                     <button 
                       onClick={handleLeaveSeat}
-                      className="w-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[10px] font-black uppercase tracking-wider py-2 rounded-xl border border-rose-500/30 transition flex items-center justify-center gap-1.5"
+                      className="w-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[10px] font-black uppercase tracking-wider py-2 rounded-xl border border-rose-500/30 transition flex items-center justify-center gap-1.5 shadow-sm"
                     >
                       <LogOut className="w-3 h-3" /> Leave Seat
                     </button>
@@ -206,7 +268,7 @@ export default function GameTable() {
                   ) : currentSeat && !isOccupied && !isDealt ? (
                     <button 
                       onClick={() => handleClaimSeat(seat.name)}
-                      className="w-full bg-slate-800 hover:bg-slate-700 text-amber-400 text-[10px] font-black uppercase tracking-wider py-2 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5"
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-amber-400 text-[10px] font-black uppercase tracking-wider py-2 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5 shadow-sm"
                     >
                       <ArrowRightLeft className="w-3 h-3" /> Switch Seat
                     </button>
@@ -215,61 +277,6 @@ export default function GameTable() {
               </div>
             );
           })}
-        </div>
-
-        {/* Central Game Board Area */}
-        <div className="w-full bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col items-center justify-center min-h-[220px] shadow-2xl">
-          {!allSeatsOccupied ? (
-            <div className="text-center">
-              <p className="text-sm font-bold text-slate-400 mb-1">Waiting for all 4 seats to be filled...</p>
-              <p className="text-xs text-slate-500">Current Occupants: {seats.filter(s => s.email !== "").length} / 4</p>
-            </div>
-          ) : !isDealt ? (
-            <div className="flex flex-col items-center">
-              <p className="text-sm font-bold text-amber-400 mb-4">All 4 Seats Occupied! Ready to Deal.</p>
-              <button
-                onClick={handleDealClick}
-                disabled={dealingLocked}
-                className="bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-black text-sm uppercase tracking-wider px-8 py-4 rounded-2xl shadow-xl transition flex items-center gap-2 active:scale-95"
-              >
-                <Play className="w-4 h-4 fill-current" /> {dealingLocked ? "Dealing..." : "Deal Dominoes"}
-              </button>
-            </div>
-          ) : (
-            <div className="w-full flex flex-col items-center">
-              <div className="flex justify-between w-full mb-3 items-center px-2">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400">
-                  {isMyTurn ? "Your Turn to Play!" : "Game in Progress"}
-                </span>
-                {isMyTurn && (
-                  <button 
-                    onClick={handlePassTurn}
-                    className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 px-3 py-1 rounded-xl text-xs font-bold border border-rose-500/30 transition"
-                  >
-                    Pass Turn
-                  </button>
-                )}
-              </div>
-
-              {/* Polished Board Container */}
-              <div className="w-full bg-slate-950/80 border border-slate-800/80 rounded-2xl p-6 min-h-[140px] flex items-center justify-center flex-wrap gap-3 shadow-inner overflow-x-auto">
-                {board?.tiles && board.tiles.length > 0 ? (
-                  board.tiles.map((t: any, idx: number) => (
-                    <div 
-                      key={idx} 
-                      className="bg-gradient-to-b from-slate-800 to-slate-900 border border-slate-700 hover:border-amber-500/50 px-4 py-3 rounded-2xl shadow-xl flex flex-col items-center justify-center transition transform hover:-translate-y-0.5"
-                    >
-                      <div className="text-xs font-black text-amber-400 tracking-widest">{t.high}</div>
-                      <div className="w-6 h-[1px] bg-slate-700 my-1"></div>
-                      <div className="text-xs font-black text-amber-400 tracking-widest">{t.low}</div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-slate-500 font-medium">Board is empty. Play the starting tile.</p>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Player's Dealt Hand */}
