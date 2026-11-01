@@ -120,9 +120,7 @@ export default function TablePage() {
     });
 
     socket.on("game:settled", (p) => setSettlement(p));
-    git add src/app/table/[roomId]/page.tsx
-git commit -m "Remove chat socket listener from game table"
-git push origin main
+    
     socket.on("room:destroyed", (data) => {
       alert(data.message);
       window.location.href = "/";
@@ -132,10 +130,6 @@ git push origin main
       socket.disconnect();
     };
   }, [roomId, router]);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatLog]);
 
   const toggleLanguage = () => {
     const next = lang === "en" ? "vi" : "en";
