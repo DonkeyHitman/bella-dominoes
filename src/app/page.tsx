@@ -147,7 +147,7 @@ export default function LobbyPage() {
           </form>
 
           {/* My Created Tables */}
-          {myTables.length > 0 && (
+          {isRegistered && myTables.length > 0 && (
             <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800/80">
               <label className="block text-[10px] text-slate-400 font-bold tracking-widest uppercase mb-2">My Created Tables</label>
               {myTables.map(tableId => (
