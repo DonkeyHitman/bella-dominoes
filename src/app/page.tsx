@@ -41,7 +41,7 @@ export default function LobbyPage() {
     if (!createTableName.trim() || !isRegistered) return;
     
     const newTableId = createTableName.trim().toLowerCase().replace(/\s+/g, '-');
-    const updatedTables = [...new Set([...myTables, newTableId])];
+    const updatedTables = myTables.includes(newTableId) ? myTables : [...myTables, newTableId];
     
     setMyTables(updatedTables);
     localStorage.setItem("bella_my_tables", JSON.stringify(updatedTables));
