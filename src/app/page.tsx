@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Upload, User, CheckCircle2 } from "lucide-react";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase"; // Assumes standard project firebase initialization
 
 export default function SingleTableLobby() {
   const router = useRouter();
@@ -11,7 +13,7 @@ export default function SingleTableLobby() {
   const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
 
-  // Hardcoded seat status tracking for the 4 fixed players
+  // Firestore-backed seats state
   const [seats, setSeats] = useState([
     { id: "player-a", name: "PLAYER A", email: "", avatar: "" },
     { id: "player-b", name: "PLAYER B", email: "", avatar: "" },
@@ -19,6 +21,7 @@ export default function SingleTableLobby() {
     { id: "player-d", name: "PLAYER D", email: "", avatar: "" },
   ]);
 
+  // Load local session and subscribe to live Firestore lobby updates
   useEffect(() => {
     const savedEmail = localStorage.getItem("bella_email");
     const savedSeat = localStorage.getItem("bella_display_name");
@@ -30,6 +33,22 @@ export default function SingleTableLobby() {
       setAvatarUrl(savedAvatar);
       setIsRegistered(true);
     }
+
+    // Real-time listener for multi-device seat syncing
+    const lobbyRef = doc(db, "lobbies", "main-table");
+    const unsubscribe = onSnapshot(lobbyRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && data.seats) {
+          setSeats(data.seats);
+        }
+      } else {
+        // Initialize lobby document if it doesn't exist yet
+        setDoc(lobbyRef, { seats }, { merge: true });
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,14 +63,65 @@ export default function SingleTableLobby() {
     reader.readAsDataURL(file);
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !avatarUrl || !selectedSeat) return;
 
-    localStorage.setItem("bella_email", email.trim().toLowerCase());
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Save user credentials locally
+    localStorage.setItem("bella_email", cleanEmail);
     localStorage.setItem("bella_display_name", selectedSeat);
     localStorage.setItem("bella_dominoes_player_id", selectedSeat.toLowerCase().replace(/\s+/g, '-'));
     setIsRegistered(true);
+
+    // Update Firestore with the new seat claim
+    try {
+      const lobbyRef = doc(db, "lobbies", "main-table");
+      const updatedSeats = seats.map((s) => {
+        // If this is the user's chosen seat, assign their email & avatar
+        if (s.name === selectedSeat) {
+          return { ...s, email: cleanEmail, avatar: avatarUrl };
+        }
+        // If this user previously held another seat, clear it
+        if (s.email === cleanEmail) {
+          return { ...s, email: "", avatar: "" };
+        }
+        return s;
+      });
+
+      await setDoc(lobbyRef, { seats: updatedSeats }, { merge: true });
+    } catch (error) {
+      console.error("Failed to sync seat reservation to Firestore:", error);
+    }
+  };
+
+  const handleSeatClick = async (seatName: string, isOccupied: boolean) => {
+    if (isOccupied || !isRegistered) return;
+    
+    setSelectedSeat(seatName);
+    localStorage.setItem("bella_display_name", seatName);
+    localStorage.setItem("bella_dominoes_player_id", seatName.toLowerCase().replace(/\s+/g, '-'));
+
+    // Instantly reflect reservation in Firestore
+    try {
+      const lobbyRef = doc(db, "lobbies", "main-table");
+      const cleanEmail = email.trim().toLowerCase();
+      
+      const updatedSeats = seats.map((s) => {
+        if (s.name === seatName) {
+          return { ...s, email: cleanEmail, avatar: avatarUrl };
+        }
+        if (s.email === cleanEmail) {
+          return { ...s, email: "", avatar: "" };
+        }
+        return s;
+      });
+
+      await setDoc(lobbyRef, { seats: updatedSeats }, { merge: true });
+    } catch (error) {
+      console.error("Failed to update seat selection:", error);
+    }
   };
 
   const handleJoinTable = () => {
@@ -128,7 +198,7 @@ export default function SingleTableLobby() {
               return (
                 <div 
                   key={seat.id}
-                  onClick={() => !isOccupied && isRegistered && setSelectedSeat(seat.name)}
+                  onClick={() => handleSeatClick(seat.name, isOccupied)}
                   className={`p-3 rounded-2xl border transition flex flex-col justify-between ${
                     isSelected 
                       ? "bg-amber-500/10 border-amber-500 shadow-md ring-2 ring-amber-500/30" 
